@@ -71,8 +71,7 @@ dofile '5_test.lua'
 
 ----------------------------------------------------------------------
 print '==> training!'
+train()
 
-while true do
-   train()
-   test()
-end
+print '==> testing!'
+test()
