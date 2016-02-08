@@ -72,8 +72,8 @@ trainData = {
 }
 
 validationData = {
-   data = loaded.data[{ {1,valsize} }]
-   labels = loaded.labels[{ {1,valsize} }],
+   data = loaded.data[{ {trsize+1,trsize+valsize} }]
+   labels = loaded.labels[{ {trsize+1,trsize+valsize} }],
    size = function() return valsize end
 }
 
