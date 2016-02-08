@@ -65,17 +65,40 @@ print '==> loading dataset'
 
 -- load and split data
 loaded = torch.load(train_file, 'ascii')
-trainData = {
-   data = loaded.data[{ {1,trsize} }],
-   labels = loaded.labels[{ {1,trsize} }],
-   size = function() return trsize end
-}
 
-validationData = {
-   data = loaded.data[{ {trsize+1,trsize+valsize} }],
-   labels = loaded.labels[{ {trsize+1,trsize+valsize} }],
-   size = function() return valsize end
-}
+-- create a shuffling vector
+function shuffleAndSplitTrain(trsize_, valsize_, data_)
+   local shuffleIndex = torch.randperm(data_.data:size(1))
+   local numTrain = trsize_
+   local numVal = valsize_
+   local train = torch.Tensor(numTrain, data_.data:size(2), data_.data:size(3), data_.data:size(4))
+   local val = torch.Tensor(numVal, data_.data:size(2), data_.data:size(3), data_.data:size(4))
+   local trainLabels = torch.Tensor(numTrain)
+   local valLabels = torch.Tensor(numVal)
+   for i=1,numTrain do
+      train[i] = data_.data[shuffleIndex[i]]:clone()
+      trainLabels[i] = data_.labels[shuffleIndex[i]]
+   end
+   for i=1,numVal do
+      val[i] = data_.data[shuffleIndex[i]]:clone()
+      valLabels[i] = data_.labels[shuffleIndex[i]]
+   end
+   trainShuffle = {
+      data = train,
+      labels = trainLabels,
+      size = function() return trsize_ end
+   }
+   valShuffle = {
+      data = val,
+      labels = valLabels,
+      size = function() return valsize_ end
+   }
+   return trainShuffle, valShuffle
+end
+
+trainData, validationData = shuffleAndSplitTrain(trsize,valsize,loaded)
+
+
 
 loaded = torch.load(test_file, 'ascii')
 testData = {
@@ -96,6 +119,7 @@ print '==> preprocessing data'
 trainData.data = trainData.data:float()
 testData.data = testData.data:float()
 validationData.data = validationData.data:float()
+print(trainData, validationData)
 
 -- We now preprocess the data. Preprocessing is crucial
 -- when applying pretty much any kind of machine learning algorithm.
@@ -124,6 +148,7 @@ std = trainData.data[{ {},1,{},{} }]:std()
 trainData.data[{ {},1,{},{} }]:add(-mean)
 trainData.data[{ {},1,{},{} }]:div(std)
 
+
 -- Normalize validation data, using the training means/stds
 validationData.data[{ {},1,{},{} }]:add(-mean)
 validationData.data[{ {},1,{},{} }]:div(std)
@@ -147,7 +172,7 @@ for i = 1,trainData:size() do
    trainData.data[{ i,{1},{},{} }] = normalization:forward(trainData.data[{ i,{1},{},{} }])
 end
 for i = 1,validationData:size() do
-   validationData.data[{ i,{1},{},{} }] = normalization:forward(trainData.data[{ i,{1},{},{} }])
+   validationData.data[{ i,{1},{},{} }] = normalization:forward(validationData.data[{ i,{1},{},{} }])
 end -- added validation data normalization
 for i = 1,testData:size() do
    testData.data[{ i,{1},{},{} }] = normalization:forward(testData.data[{ i,{1},{},{} }])
@@ -166,7 +191,7 @@ testMean = testData.data[{ {},1 }]:mean()
 testStd = testData.data[{ {},1 }]:std()
 
 valMean = validationData.data[{ {},1 }]:mean()
-valStd = validationData.data{{ {},1 }}:std()
+valStd = validationData.data[{ {},1 }]:std()
 
 print('training data mean: ' .. trainMean)
 print('training data standard deviation: ' .. trainStd)
@@ -175,7 +200,7 @@ print('test data mean: ' .. testMean)
 print('test data standard deviation: ' .. testStd)
 
 print('validation data mean: ' .. valMean)
-print('validation data standard deviation: ' .. valMean)
+print('validation data standard deviation: ' .. valStd)
 
 ----------------------------------------------------------------------
 print '==> visualizing data'
