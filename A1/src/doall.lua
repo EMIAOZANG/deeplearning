@@ -77,4 +77,5 @@ print '==> training!'
 for i=1,opt.nepochs do
    train()
    test()
+   -- add some adaptive stopping criterion here
 end

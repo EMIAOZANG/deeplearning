@@ -60,6 +60,12 @@ elseif opt.size == 'small' then
    valsize = 2000 -- adding validation set, default train:test:val ratio is 4:1:2
 end
 
+if opt.sub == true then
+   trsize = trsize + valsize
+else
+   tesize = valsize
+end
+
 ----------------------------------------------------------------------
 print '==> loading dataset'
 
@@ -96,16 +102,23 @@ function shuffleAndSplitTrain(trsize_, valsize_, data_)
    return trainShuffle, valShuffle
 end
 
-trainData, validationData = shuffleAndSplitTrain(trsize,valsize,loaded)
+if opt.sub == true then
+   trainData, testData = shuffleAndSplitTrain(trsize,valsize,loaded)
+else
+   trainData = {
+      data = loaded.data,
+      labels = loaded.labels,
+      size = function() return trsize end
+   }
+	loaded = torch.load(test_file, 'ascii')
+	testData = {
+	   data = loaded.data,
+	   labels = loaded.labels,
+	   size = function() return tesize end
+	}
+end
 
 
-
-loaded = torch.load(test_file, 'ascii')
-testData = {
-   data = loaded.data,
-   labels = loaded.labels,
-   size = function() return tesize end
-}
 
 ----------------------------------------------------------------------
 print '==> preprocessing data'
@@ -118,8 +131,6 @@ print '==> preprocessing data'
 
 trainData.data = trainData.data:float()
 testData.data = testData.data:float()
-validationData.data = validationData.data:float()
-print(trainData, validationData)
 
 -- We now preprocess the data. Preprocessing is crucial
 -- when applying pretty much any kind of machine learning algorithm.
@@ -148,11 +159,6 @@ std = trainData.data[{ {},1,{},{} }]:std()
 trainData.data[{ {},1,{},{} }]:add(-mean)
 trainData.data[{ {},1,{},{} }]:div(std)
 
-
--- Normalize validation data, using the training means/stds
-validationData.data[{ {},1,{},{} }]:add(-mean)
-validationData.data[{ {},1,{},{} }]:div(std)
-
 -- Normalize test data, using the training means/stds
 testData.data[{ {},1,{},{} }]:add(-mean)
 testData.data[{ {},1,{},{} }]:div(std)
@@ -171,9 +177,7 @@ normalization = nn.SpatialContrastiveNormalization(1, neighborhood, 1):float()
 for i = 1,trainData:size() do
    trainData.data[{ i,{1},{},{} }] = normalization:forward(trainData.data[{ i,{1},{},{} }])
 end
-for i = 1,validationData:size() do
-   validationData.data[{ i,{1},{},{} }] = normalization:forward(validationData.data[{ i,{1},{},{} }])
-end -- added validation data normalization
+
 for i = 1,testData:size() do
    testData.data[{ i,{1},{},{} }] = normalization:forward(testData.data[{ i,{1},{},{} }])
 end
@@ -190,17 +194,13 @@ trainStd = trainData.data[{ {},1 }]:std()
 testMean = testData.data[{ {},1 }]:mean()
 testStd = testData.data[{ {},1 }]:std()
 
-valMean = validationData.data[{ {},1 }]:mean()
-valStd = validationData.data[{ {},1 }]:std()
-
 print('training data mean: ' .. trainMean)
 print('training data standard deviation: ' .. trainStd)
+print('training data size: ' .. trainData:size())
 
 print('test data mean: ' .. testMean)
 print('test data standard deviation: ' .. testStd)
-
-print('validation data mean: ' .. valMean)
-print('validation data standard deviation: ' .. valStd)
+print('testing data size: ' .. testData:size())
 
 ----------------------------------------------------------------------
 print '==> visualizing data'
