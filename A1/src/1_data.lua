@@ -36,13 +36,13 @@ print '==> downloading dataset'
 
 tar = 'http://torch7.s3-website-us-east-1.amazonaws.com/data/mnist.t7.tgz'
 
-data_path = 'mnist.t7'
+data_path = '../dat/mnist.t7'
 train_file = paths.concat(data_path, 'train_32x32.t7')
 test_file = paths.concat(data_path, 'test_32x32.t7')
 
 if not paths.filep(train_file) or not paths.filep(test_file) then
-   os.execute('wget ' .. tar)
-   os.execute('tar xvf ' .. paths.basename(tar))
+   os.execute('wget ' .. tar .. ' -P ../dat')
+   os.execute('tar xvf ' .. paths.concat('../dat/',paths.basename(tar)) .. ' -C ../dat/')
 end
 
 ----------------------------------------------------------------------
