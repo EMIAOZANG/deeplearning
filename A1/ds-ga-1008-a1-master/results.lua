@@ -13,7 +13,7 @@ require 'xlua'    -- xlua provides useful tools, like progress bars
 require 'optim'   -- an optimization package, for online and batch methods
 
 opt = {size="full",visualize=false}
-dofile '../ds-ga-1008-a1-master/1_data.lua'
+dofile '1_data.lua'
 
 -- get model and test data from command line?
 function predict(model_path)

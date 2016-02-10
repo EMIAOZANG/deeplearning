@@ -47,6 +47,8 @@ cmd:option('-maxIter', 2, 'maximum nb of iterations for CG and LBFGS')
 cmd:option('-type', 'double', 'type: double | float | cuda')
 cmd:option('-nepochs', 10, 'maximum number of epochs, it will stop learning after nepochs even if the result is not converged')
 cmd:option('-sub',false,'use test data if set to true')
+cmd:option('-poolSize', 2, 'pool size')
+cmd:option('-filtSize', 5, 'filter size')
 cmd:text()
 opt = cmd:parse(arg or {})
 

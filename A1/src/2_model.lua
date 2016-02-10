@@ -28,6 +28,8 @@ if not opt then
    cmd:text('Options:')
    cmd:option('-model', 'convnet', 'type of model to construct: linear | mlp | convnet')
    cmd:option('-visualize', true, 'visualize input data and weights during training')
+   cmd:option('-poolSize', 2, 'pool size')
+   cmd:option('-filtSize', 5, 'filter size')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -49,8 +51,8 @@ nhiddens = ninputs / 2
 
 -- hidden units, filter sizes (for ConvNet only):
 nstates = {64,64,128}
-filtsize = 5
-poolsize = 2
+filtsize = opt.filtSize --5
+poolsize = opt.poolSize --2
 normkernel = image.gaussian1D(7)
 
 ----------------------------------------------------------------------
