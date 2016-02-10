@@ -19,7 +19,7 @@ Digit Recognition using MNIST dataset
 ```
 
 ### Usage
- * ```python src/train.py```, train models for different cmd args
+ * ```python src/train.py --param1 val1 val2 val3 --param2 val1 val2 val3 val4 --param3 ....```, train models for different cmd args
  * ```python src/predict.py```, generate predictions using model.net files in each result subdirectory
 
 ### Note
