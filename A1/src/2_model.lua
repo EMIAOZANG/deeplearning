@@ -51,6 +51,8 @@ nhiddens = ninputs / 2
 
 -- hidden units, filter sizes (for ConvNet only):
 nstates = {64,64,128}
+print('filtSize='..opt.filtSize)
+print('poolSize='..opt.poolSize)
 filtsize = opt.filtSize --5
 poolsize = opt.poolSize --2
 normkernel = image.gaussian1D(7)
