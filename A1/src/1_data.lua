@@ -25,6 +25,7 @@ if not opt then
    cmd:text('Options:')
    cmd:option('-size', 'small', 'how many samples do we load: small | full')
    cmd:option('-visualize', true, 'visualize input data and weights during training')
+   cmd:option('-sub', true, 'use test data if set to true')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -60,7 +61,9 @@ elseif opt.size == 'small' then
    valsize = 2000 -- adding validation set, default train:test:val ratio is 4:1:2
 end
 
-if opt.sub == true then
+print('sub=')
+print(opt.sub)
+if opt.sub == true then --non-submission version
    trsize = trsize + valsize
 else
    tesize = valsize
@@ -102,7 +105,7 @@ function shuffleAndSplitTrain(trsize_, valsize_, data_)
    return trainShuffle, valShuffle
 end
 
-if opt.sub == true then
+if opt.sub == false then --training version
    trainData, testData = shuffleAndSplitTrain(trsize,valsize,loaded)
 else
    trainData = {
@@ -110,6 +113,7 @@ else
       labels = loaded.labels,
       size = function() return trsize end
    }
+   print('tesize='..tesize)
 	loaded = torch.load(test_file, 'ascii')
 	testData = {
 	   data = loaded.data,
@@ -132,6 +136,10 @@ print '==> preprocessing data'
 trainData.data = trainData.data:float()
 testData.data = testData.data:float()
 
+print(trainData)
+print(trainData:size())
+print(testData)
+print(testData:size())
 -- We now preprocess the data. Preprocessing is crucial
 -- when applying pretty much any kind of machine learning algorithm.
 
