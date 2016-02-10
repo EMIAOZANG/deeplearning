@@ -22,5 +22,7 @@ Digit Recognition using MNIST dataset
  * ```python src/train.py```, train models for different cmd args
  * ```python src/predict.py```, generate predictions using model.net files in each result subdirectory
 
+### Note
+ * Please add dat to .gitignore and store large data files in dat directory
 
 
