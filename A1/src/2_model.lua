@@ -55,6 +55,7 @@ print('filtSize='..opt.filtSize)
 print('poolSize='..opt.poolSize)
 filtsize = opt.filtSize --5
 poolsize = opt.poolSize --2
+owidth = width
 normkernel = image.gaussian1D(7)
 
 ----------------------------------------------------------------------
@@ -78,57 +79,69 @@ elseif opt.model == 'mlp' then
 
 elseif opt.model == 'convnet' then
 
-   if opt.type == 'cuda' then
-      -- a typical modern convolution network (conv+relu+pool)
-      model = nn.Sequential()
+   -- a typical convolutional network, with locally-normalized hidden
+   -- units, and L2-pooling
 
-      -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
-      model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-      model:add(nn.Tanh())
-      model:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
+   -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
+   -- work on the SVHN dataset (http://arxiv.org/abs/1204.3968). In particular
+   -- the use of LP-pooling (with P=2) has a very positive impact on
+   -- generalization. Normalization is not done exactly as proposed in
+   -- the paper, and low-level (first layer) features are not fed to
+   -- the classifier.
 
-      -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
-      model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-      model:add(nn.Tanh())
-      model:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
+   model = nn.Sequential()
 
-      -- stage 3 : standard 2-layer neural network
-      model:add(nn.View(nstates[2]*filtsize*filtsize))
-      model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-      model:add(nn.Tanh())
-      model:add(nn.Linear(nstates[3], noutputs))
+   -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
+   model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
+   model:add(nn.Tanh())
+   model:add(nn.SpatialLPPooling(nstates[1],2,poolsize,poolsize,poolsize,poolsize))
+   model:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
+   owidth = torch.floor((owidth - filtsize + 1)/poolsize) -- assumes pool stride = pool width, conv kernel = 1
 
-   else
-      -- a typical convolutional network, with locally-normalized hidden
-      -- units, and L2-pooling
+   -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
+   model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
+   model:add(nn.Tanh())
+   model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
+   model:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
+   owidth = torch.floor((owidth - filtsize + 1)/poolsize) -- assumes pool stride = pool width, conv kernel = 1
 
-      -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
-      -- work on the SVHN dataset (http://arxiv.org/abs/1204.3968). In particular
-      -- the use of LP-pooling (with P=2) has a very positive impact on
-      -- generalization. Normalization is not done exactly as proposed in
-      -- the paper, and low-level (first layer) features are not fed to
-      -- the classifier.
+   -- stage 3 : standard 2-layer neural network
+   model:add(nn.Reshape(nstates[2]*owidth*owidth))
+   model:add(nn.Linear(nstates[2]*owidth*owidth, nstates[3]))
+   model:add(nn.Tanh())
+   model:add(nn.Linear(nstates[3], noutputs))
 
-      model = nn.Sequential()
+elseif opt.model == 'convnet_basic' then
 
-      -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
-      model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-      model:add(nn.Tanh())
-      model:add(nn.SpatialLPPooling(nstates[1],2,poolsize,poolsize,poolsize,poolsize))
-      model:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
+   -- a typical convolutional network, with locally-normalized hidden
+   -- units, and L2-pooling
 
-      -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
-      model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-      model:add(nn.Tanh())
-      model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
-      model:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
+   -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
+   -- work on the SVHN dataset (http://arxiv.org/abs/1204.3968). In particular
+   -- the use of LP-pooling (with P=2) has a very positive impact on
+   -- generalization. Normalization is not done exactly as proposed in
+   -- the paper, and low-level (first layer) features are not fed to
+   -- the classifier.
 
-      -- stage 3 : standard 2-layer neural network
-      model:add(nn.Reshape(nstates[2]*filtsize*filtsize))
-      model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-      model:add(nn.Tanh())
-      model:add(nn.Linear(nstates[3], noutputs))
-   end
+   model = nn.Sequential()
+
+   -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
+   model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
+   model:add(nn.Tanh())
+   model:add(nn.SpatialLPPooling(nstates[1],2,poolsize,poolsize,poolsize,poolsize))
+   model:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
+
+   -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
+   model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
+   model:add(nn.Tanh())
+   model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
+   model:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
+
+   -- stage 3 : standard 2-layer neural network
+   model:add(nn.Reshape(nstates[2]*filtsize*filtsize))
+   model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
+   model:add(nn.Tanh())
+   model:add(nn.Linear(nstates[3], noutputs))
 else
 
    error('unknown -model')
@@ -137,7 +150,9 @@ end
 
 ----------------------------------------------------------------------
 print '==> here is the model:'
+print(opt.model)
 print(model)
+print(owidth)
 
 ----------------------------------------------------------------------
 -- Visualization is quite easy, using itorch.image().
