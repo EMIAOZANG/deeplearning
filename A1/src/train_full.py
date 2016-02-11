@@ -10,7 +10,7 @@ import argparse
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--poolSize',type=int, nargs='*',default=[2])
 arg_parser.add_argument('--filtSize',type=int, nargs='*',default=[5])
-arg_parser.add_argument('--augment',type=bool, nargs='*',default=[True, False])
+arg_parser.add_argument('--dropoutProb', type=float, nargs='*',default=[0,0.5])
 
 args = arg_parser.parse_args()
 args_dict = vars(args)
@@ -25,4 +25,6 @@ for key, val_list in args_dict.iteritems():
         print "Hyper parameter value = ", val
         print "Now executing command:\n", "th doall.lua -size small -save {} -nepochs 1 -{}{}".format(key+"="+str(val),key,val)
 #Note that nepochs are hard coded as 1 here!!! We might want to use it as another cmd arg in the future
-        os.system("th doall.lua -size full -save {} -nepochs 15 -{} {} {}".format("results_"+key+"="+str(val),key,val,' -augment' if key=='augment' and val_list==True else ''))
+        os.system("th doall.lua -size full -save {} -nepochs 15 -{} {} --augment".format("results_augment_"+key+"="+str(val),key,val))
+        os.system("th doall.lua -size full -save {} -nepochs 15 -{} {}".format("results_"+key+"="+str(val),key,val))
+        
