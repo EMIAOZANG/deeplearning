@@ -1,8 +1,7 @@
 -- result.lua
 
 -- given a model, saves a list of predicted values on the MNIST test set.
-
--- NOTE: This assumes that it shares a directory with both model.net and 1_data.lua
+-- first it downloads and runs 1_data.lua to get the test set.
 
 require 'torch'   -- torch
 require 'xlua'    -- xlua provides useful tools, like progress bars
