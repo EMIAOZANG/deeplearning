@@ -26,8 +26,13 @@ function test()
    -- set model to evaluate mode (for modules that differ in training and testing, like Dropout)
    model:evaluate()
 
-   -- test over test data
-   print('==> testing on test set:')
+   -- test model
+   if opt.sub==false then
+      print('==> testing on validation set:')
+   elseif opt.sub==true then
+      print('==> testing on test set:')
+   end
+
    for t = 1,testData:size() do
       -- disp progress
       xlua.progress(t, testData:size())
