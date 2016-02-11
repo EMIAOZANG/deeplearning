@@ -26,6 +26,7 @@ if not opt then
    cmd:option('-size', 'full', 'how many samples do we load: small | full')
    cmd:option('-visualize', true, 'visualize input data and weights during training')
    cmd:option('-sub', false, 'use test data if set to true')
+   cmd:option('-augment',false,'augment data by adding randomly-rotated images')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -124,23 +125,36 @@ else
 	}
 end
 
--- Data Augmentation with rotation
--- Create large frames
-print("traindatasize:"..trainData:size())
-extraData = torch.Tensor(trainData:size(), 1, 32, 32)
-extraLabels = trainData.labels
+trainData.data = trainData.data:float()
+testData.data = testData.data:float()
 
-for i=1,trainData:size() do
-   extraData[i][1] = image.rotate(trainData.data[i][1], 0.43*2*(math.random()-0.5)) --rotate train data by a random angle between -25 and +25 degrees
+
+function augment_data()
+   -- Data Augmentation with rotation
+   -- Create large frames
+   print("traindatasize:"..trsize)
+   extraData = torch.Tensor(trsize, 1, 32, 32)
+   extraLabels = trainData.labels
+
+   for i=1,trsize do
+      extraData[i][1] = image.rotate(trainData.data[i][1], 0.43*2*(math.random()-0.5)) --rotate train data by a random angle between -25 and +25 degrees
+   end
+
+   extraData = extraData:float()
+   trainData.data = trainData.data:float()
+
+   trainData = {
+      data = torch.cat(trainData.data, extraData, 1),
+      labels = torch.cat(trainData.labels,extraLabels,1),
+      size = function() return 2*trsize end
+   }
+
+   print('Size of augmented data: '.. trainData:size())
 end
 
-trainData = {
-   data = torch.cat(trainData.data, extraData, 1),
-   labels = torch.cat(trainData.labels,extraLabels,1),
-   size = function() return 2*trsize end
-}   
-
-print('Size of augmented data: '..trainData:size())
+if opt.augment then
+   augment_data()
+end
 
 ----------------------------------------------------------------------
 print '==> preprocessing data'
@@ -150,9 +164,6 @@ print '==> preprocessing data'
 -- in general by doing: dst = src:type('torch.TypeTensor'), 
 -- where Type=='Float','Double','Byte','Int',... Shortcuts are provided
 -- for simplicity (float(),double(),cuda(),...):
-
-trainData.data = trainData.data:float()
-testData.data = testData.data:float()
 
 print(trainData)
 print(trainData:size())

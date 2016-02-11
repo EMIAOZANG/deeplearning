@@ -30,6 +30,7 @@ if not opt then
    cmd:option('-visualize', true, 'visualize input data and weights during training')
    cmd:option('-poolSize', 2, 'pool size')
    cmd:option('-filtSize', 5, 'filter size')
+   cmd:option('-dropoutProb',0.5,'dropout probability')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -55,6 +56,7 @@ print('filtSize='..opt.filtSize)
 print('poolSize='..opt.poolSize)
 filtsize = opt.filtSize --5
 poolsize = opt.poolSize --2
+dropoutProb = opt.dropoutProb --0.5
 owidth = width
 normkernel = image.gaussian1D(7)
 
@@ -99,49 +101,19 @@ elseif opt.model == 'convnet' then
    owidth = torch.floor((owidth - filtsize + 1)/poolsize) -- assumes pool stride = pool width, conv kernel = 1
 
    -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
+   --model:add(nn.SpatialDropout(dropoutProb))
    model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
    model:add(nn.ReLU())
    model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
    model:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
-   
+
    owidth = torch.floor((owidth - filtsize + 1)/poolsize) -- assumes pool stride = pool width, conv kernel = 1
 
    -- stage 3 : standard 2-layer neural network
    model:add(nn.Reshape(nstates[2]*owidth*owidth))
    model:add(nn.Linear(nstates[2]*owidth*owidth, nstates[3]))
    model:add(nn.ReLU())
-   model:add(nn.Linear(nstates[3], noutputs))
-
-elseif opt.model == 'convnet_basic' then
-
-   -- a typical convolutional network, with locally-normalized hidden
-   -- units, and L2-pooling
-
-   -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
-   -- work on the SVHN dataset (http://arxiv.org/abs/1204.3968). In particular
-   -- the use of LP-pooling (with P=2) has a very positive impact on
-   -- generalization. Normalization is not done exactly as proposed in
-   -- the paper, and low-level (first layer) features are not fed to
-   -- the classifier.
-
-   model = nn.Sequential()
-
-   -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
-   model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-   model:add(nn.ReLU())
-   model:add(nn.SpatialLPPooling(nstates[1],2,poolsize,poolsize,poolsize,poolsize))
-   model:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
-
-   -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
-   model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-   model:add(nn.ReLU())
-   model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
-   model:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
-
-   -- stage 3 : standard 2-layer neural network
-   model:add(nn.Reshape(nstates[2]*filtsize*filtsize))
-   model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-   model:add(nn.ReLU())
+   --model:add(nn.Dropout(dropoutProb))
    model:add(nn.Linear(nstates[3], noutputs))
 
 else
