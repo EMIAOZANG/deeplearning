@@ -101,7 +101,7 @@ elseif opt.model == 'convnet' then
    owidth = torch.floor((owidth - filtsize + 1)/poolsize) -- assumes pool stride = pool width, conv kernel = 1
 
    -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
-   --model:add(nn.SpatialDropout(dropoutProb))
+   model:add(nn.SpatialDropout(dropoutProb))
    model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
    model:add(nn.ReLU())
    model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
@@ -113,7 +113,7 @@ elseif opt.model == 'convnet' then
    model:add(nn.Reshape(nstates[2]*owidth*owidth))
    model:add(nn.Linear(nstates[2]*owidth*owidth, nstates[3]))
    model:add(nn.ReLU())
-   --model:add(nn.Dropout(dropoutProb))
+   model:add(nn.Dropout(dropoutProb))
    model:add(nn.Linear(nstates[3], noutputs))
 
 else
