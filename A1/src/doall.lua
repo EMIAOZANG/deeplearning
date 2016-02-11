@@ -49,7 +49,7 @@ cmd:option('-nepochs', 10, 'maximum number of epochs, it will stop learning afte
 cmd:option('-sub',false,'use test data if set to true')
 cmd:option('-poolSize', 2, 'pool size')
 cmd:option('-filtSize', 5, 'filter size')
-cmd:option('-dropoutProb', 0.5, 'dropout probability')
+cmd:option('-dropoutProb', 0, 'dropout probability')
 cmd:option('-augment',false,'augment data by adding randomly-rotated images')
 cmd:text()
 opt = cmd:parse(arg or {})
