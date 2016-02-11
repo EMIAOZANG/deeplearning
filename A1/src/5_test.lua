@@ -56,7 +56,6 @@ function test()
    -- print confusion matrix
    print(confusion)
 
-   -- update log/plot
    testLogger:add{['% mean class accuracy (test set)'] = confusion.totalValid * 100}
    if opt.plot then
       testLogger:style{['% mean class accuracy (test set)'] = '-'}
@@ -67,6 +66,11 @@ function test()
    if average then
       -- restore parameters
       parameters:copy(cachedparams)
+   end
+   
+   -- update log/plot
+   if confusion.totalValid > currentBest then
+      currentBest = confusion.totalValid
    end
    
    -- next iteration:
