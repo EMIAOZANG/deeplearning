@@ -93,14 +93,14 @@ elseif opt.model == 'convnet' then
 
    -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
    model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-   model:add(nn.Tanh())
+   model:add(nn.ReLU())
    model:add(nn.SpatialLPPooling(nstates[1],2,poolsize,poolsize,poolsize,poolsize))
    model:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
    owidth = torch.floor((owidth - filtsize + 1)/poolsize) -- assumes pool stride = pool width, conv kernel = 1
 
    -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
    model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-   model:add(nn.Tanh())
+   model:add(nn.ReLU())
    model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
    model:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
    owidth = torch.floor((owidth - filtsize + 1)/poolsize) -- assumes pool stride = pool width, conv kernel = 1
@@ -108,7 +108,7 @@ elseif opt.model == 'convnet' then
    -- stage 3 : standard 2-layer neural network
    model:add(nn.Reshape(nstates[2]*owidth*owidth))
    model:add(nn.Linear(nstates[2]*owidth*owidth, nstates[3]))
-   model:add(nn.Tanh())
+   model:add(nn.ReLU())
    model:add(nn.Linear(nstates[3], noutputs))
 
 elseif opt.model == 'convnet_basic' then
@@ -127,20 +127,20 @@ elseif opt.model == 'convnet_basic' then
 
    -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
    model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-   model:add(nn.Tanh())
+   model:add(nn.ReLU())
    model:add(nn.SpatialLPPooling(nstates[1],2,poolsize,poolsize,poolsize,poolsize))
    model:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
 
    -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
    model:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-   model:add(nn.Tanh())
+   model:add(nn.ReLU())
    model:add(nn.SpatialLPPooling(nstates[2],2,poolsize,poolsize,poolsize,poolsize))
    model:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
 
    -- stage 3 : standard 2-layer neural network
    model:add(nn.Reshape(nstates[2]*filtsize*filtsize))
    model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-   model:add(nn.Tanh())
+   model:add(nn.ReLU())
    model:add(nn.Linear(nstates[3], noutputs))
 
 else
