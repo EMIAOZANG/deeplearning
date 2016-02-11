@@ -141,14 +141,14 @@ function augment_data()
    end
 
    extraData = extraData:float()
-   trainData.data = trainData.data:float()
+   trsize = 2*trsize
 
    trainData = {
       data = torch.cat(trainData.data, extraData, 1),
       labels = torch.cat(trainData.labels,extraLabels,1),
-      size = function() return 2*trsize end
+      size = function() return trsize end
    }
-
+   
    print('Size of augmented data: '.. trainData:size())
 end
 

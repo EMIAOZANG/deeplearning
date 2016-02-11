@@ -1,4 +1,4 @@
--- results.lua
+-- result.lua
 
 -- given a model, saves a list of predicted values on the MNIST test set.
 
