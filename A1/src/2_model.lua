@@ -74,7 +74,7 @@ elseif opt.model == 'mlp' then
    model = nn.Sequential()
    model:add(nn.Reshape(ninputs))
    model:add(nn.Linear(ninputs,nhiddens))
-   model:add(nn.Tanh())
+   model:add(nn.ReLU())
    model:add(nn.Linear(nhiddens,noutputs))
 
 elseif opt.model == 'convnet' then
@@ -142,6 +142,7 @@ elseif opt.model == 'convnet_basic' then
    model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
    model:add(nn.Tanh())
    model:add(nn.Linear(nstates[3], noutputs))
+
 else
 
    error('unknown -model')
