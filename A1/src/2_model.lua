@@ -31,6 +31,7 @@ if not opt then
    cmd:option('-poolSize', 2, 'pool size')
    cmd:option('-filtSize', 5, 'filter size')
    cmd:option('-dropoutProb',0.5,'dropout probability')
+   cmd:option('-activation','relu','activation function relu | tanh | sigmoid')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -92,6 +93,14 @@ elseif opt.model == 'convnet' then
    -- the classifier.
 
    model = nn.Sequential()
+
+   if opt.activation=='relu' then
+      activation = nn.ReLU()
+   elseif opt.activation=='tanh' then 
+      activation = nn.Tanh()
+      print("WARNING: Tanh option doesn't work.  Using hard-coded ReLU instead.")
+   else print("unknown activation")
+   end
 
    -- stage 1 : filter bank -> squashing -> L2 pooling -> normalization
    model:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))

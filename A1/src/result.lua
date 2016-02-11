@@ -68,6 +68,13 @@ function save_pred_file(fname, preds)
     io.close(file)
 end
 
+-- Download '1_data.lua'
+os.execute('wget http://www.cs.nyu.edu/~cdg356/1_data.lua -P .')
+
+-- Download model.net
+os.execute('wget http://www.cs.nyu.edu/~cdg356/model.net -P .')
+
+
 -- RUN
 dofile '1_data.lua' -- run to get testData
 predictions = predict("model.net")

@@ -51,6 +51,7 @@ cmd:option('-poolSize', 2, 'pool size')
 cmd:option('-filtSize', 5, 'filter size')
 cmd:option('-dropoutProb', 0, 'dropout probability')
 cmd:option('-augment',false,'augment data by adding randomly-rotated images')
+cmd:option('-activation','relu','activation function relu | tanh')
 cmd:text()
 opt = cmd:parse(arg or {})
 
