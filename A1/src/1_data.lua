@@ -23,9 +23,9 @@ if not opt then
    cmd:text('MNIST Dataset Preprocessing')
    cmd:text()
    cmd:text('Options:')
-   cmd:option('-size', 'small', 'how many samples do we load: small | full')
+   cmd:option('-size', 'full', 'how many samples do we load: small | full')
    cmd:option('-visualize', true, 'visualize input data and weights during training')
-   cmd:option('-sub', true, 'use test data if set to true')
+   cmd:option('-sub', false, 'use test data if set to true')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -45,6 +45,7 @@ if not paths.filep(train_file) or not paths.filep(test_file) then
    os.execute('wget ' .. tar .. ' -P ../dat')
    os.execute('tar xvf ' .. paths.concat('../dat/',paths.basename(tar)) .. ' -C ../dat/')
 end
+
 
 ----------------------------------------------------------------------
 -- training/test/validation size
@@ -75,6 +76,7 @@ print '==> loading dataset'
 -- load and split data
 loaded = torch.load(train_file, 'ascii')
 
+
 -- create a shuffling vector
 function shuffleAndSplitTrain(trsize_, valsize_, data_)
    local shuffleIndex = torch.randperm(data_.data:size(1))
@@ -94,7 +96,7 @@ function shuffleAndSplitTrain(trsize_, valsize_, data_)
    end
    trainShuffle = {
       data = train,
-      labels = trainLabels,
+      labels = trainLabels, 
       size = function() return trsize_ end
    }
    valShuffle = {
@@ -122,7 +124,23 @@ else
 	}
 end
 
+-- Data Augmentation with rotation
+-- Create large frames
+print("traindatasize:"..trainData:size())
+extraData = torch.Tensor(trainData:size(), 1, 32, 32)
+extraLabels = trainData.labels
 
+for i=1,trainData:size() do
+   extraData[i][1] = image.rotate(trainData.data[i][1], 0.43*2*(math.random()-0.5)) --rotate train data by a random angle between -25 and +25 degrees
+end
+
+trainData = {
+   data = torch.cat(trainData.data, extraData, 1),
+   labels = torch.cat(trainData.labels,extraLabels,1),
+   size = function() return 2*trsize end
+}   
+
+print('Size of augmented data: '..trainData:size())
 
 ----------------------------------------------------------------------
 print '==> preprocessing data'
