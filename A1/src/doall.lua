@@ -51,6 +51,7 @@ cmd:option('-poolSize', 2, 'pool size')
 cmd:option('-filtSize', 5, 'filter size')
 cmd:option('-dropoutProb', 0, 'dropout probability')
 cmd:option('-augment',false,'augment data by adding randomly-rotated images')
+cmd:option('-activation','relu','activation function relu | tanh')
 cmd:text()
 opt = cmd:parse(arg or {})
 
@@ -78,8 +79,12 @@ dofile '5_test.lua'
 ----------------------------------------------------------------------
 print '==> training!'
 
-for i=1,opt.nepochs do
+bestSubmission = 0.99540
+currentBest = 0
+i=1
+
+-- stop if you beat the best submission or reach max epochs
+while i<=opt.nepochs and currentBest<=bestSubmission do
    train()
    test()
-   -- add some adaptive stopping criterion here
 end

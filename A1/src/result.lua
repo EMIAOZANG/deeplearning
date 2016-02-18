@@ -1,8 +1,7 @@
 -- result.lua
 
 -- given a model, saves a list of predicted values on the MNIST test set.
-
--- NOTE: This assumes that it shares a directory with both model.net and 1_data.lua
+-- first it downloads and runs 1_data.lua to get the test set.
 
 require 'torch'   -- torch
 require 'xlua'    -- xlua provides useful tools, like progress bars
@@ -67,6 +66,13 @@ function save_pred_file(fname, preds)
     end
     io.close(file)
 end
+
+-- Download '1_data.lua'
+os.execute('wget http://www.cs.nyu.edu/~cdg356/1_data.lua -P .')
+
+-- Download model.net
+os.execute('wget http://www.cs.nyu.edu/~cdg356/model.net -P .')
+
 
 -- RUN
 dofile '1_data.lua' -- run to get testData
