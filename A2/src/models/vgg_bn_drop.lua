@@ -1,5 +1,5 @@
 require 'nn'
-
+-- this one has dropout on every layer rather than just the last layer
 local vgg = nn.Sequential()
 
 -- building block

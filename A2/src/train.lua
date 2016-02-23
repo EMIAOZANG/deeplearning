@@ -19,20 +19,20 @@ opt = lapp[[
 
 print(opt)
 
-do -- data augmentation module
+do -- data augmentation module -- local block of variables that will get killed
   local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module')
 
-  function BatchFlip:__init()
+  function BatchFlip:__init() -- modify this to add rotation and translation to flip
     parent.__init(self)
-    self.train = true
+    self.train = true --set train to true.  Only flip training data.
   end
 
   function BatchFlip:updateOutput(input)
-    if self.train then
-      local bs = input:size(1)
-      local flip_mask = torch.randperm(bs):le(bs/2)
+    if self.train then -- is true upon init
+      local bs = input:size(1) -- list of images (1st dimension is image id's)
+      local flip_mask = torch.randperm(bs):le(bs/2) -- random list of 1s and 0s, so randomly flips some images.  different for each epoch
       for i=1,input:size(1) do
-        if flip_mask[i] == 1 then image.hflip(input[i], input[i]) end
+        if flip_mask[i] == 1 then image.hflip(input[i], input[i]) end --performs a horizontal flip
       end
     end
     self.output:set(input)
@@ -42,10 +42,10 @@ end
 
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
-model:add(nn.BatchFlip():float())
+model:add(nn.BatchFlip():float()) -- call batch flip.  can add another rotation layer or translation if you like
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
-model:add(dofile('models/'..opt.model..'.lua'):cuda())
-model:get(2).updateGradInput = function(input) return end
+model:add(dofile('models/'..opt.model..'.lua'):cuda()) --load model from external file
+model:get(2).updateGradInput = function(input) return end -- get layer 2 of the model (batchflip).  take this input and drop it on the floor.  won't do anything in the backprop stage
 
 if opt.backend == 'cudnn' then
    require 'cudnn'
@@ -71,7 +71,7 @@ parameters,gradParameters = model:getParameters()
 
 
 print(c.blue'==>' ..' setting criterion')
-criterion = nn.CrossEntropyCriterion():cuda()
+criterion = nn.CrossEntropyCriterion():cuda() --loss function
 
 
 print(c.blue'==>' ..' configuring optimizer')
@@ -94,23 +94,23 @@ function train()
 
   local targets = torch.CudaTensor(opt.batchSize)
   local indices = torch.randperm(provider.trainData.data:size(1)):long():split(opt.batchSize)
-  -- remove last element so that all the batches have equal size
+  -- remove last element so that all the batches have equal size.  This removes the "remainder" when you divide the data by batch size
   indices[#indices] = nil
 
   local tic = torch.tic()
   for t,v in ipairs(indices) do
-    xlua.progress(t, #indices)
+    xlua.progress(t, #indices) -- progress bar is cool
 
     local inputs = provider.trainData.data:index(1,v)
     targets:copy(provider.trainData.labels:index(1,v))
 
-    local feval = function(x)
+    local feval = function(x) --this is pretty much always the same for all torch programs
       if x ~= parameters then parameters:copy(x) end
       gradParameters:zero()
       
       local outputs = model:forward(inputs)
-      local f = criterion:forward(outputs, targets)
-      local df_do = criterion:backward(outputs, targets)
+      local f = criterion:forward(outputs, targets) --how well did you do
+      local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
       model:backward(inputs, df_do)
 
       confusion:batchAdd(outputs, targets)
@@ -126,13 +126,13 @@ function train()
 
   train_acc = confusion.totalValid * 100
 
-  confusion:zero()
+  confusion:zero() -- reset to zero
   epoch = epoch + 1
 end
 
 
 function val()
-  -- disable flips, dropouts and batch normalization
+  -- disable flips, dropouts and batch normalization -- what is batch normalization?
   model:evaluate()
   print(c.blue '==>'.." valing")
   local bs = 25
@@ -142,7 +142,7 @@ function val()
   end
 
   confusion:updateValids()
-  print('val accuracy:', confusion.totalValid * 100)
+  print('val accuracy:', confusion.totalValid * 100) --get validation accuracy
   
   if valLogger then
     paths.mkdir(opt.save)
