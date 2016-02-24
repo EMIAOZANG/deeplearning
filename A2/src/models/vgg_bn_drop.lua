@@ -1,3 +1,6 @@
+-- NOTE: Jake has no idea whether it works on stl-10. He copied it from CIFAR. 
+-- In fact, it definitely does not work unchanged.
+
 require 'nn'
 -- this one has dropout on every layer rather than just the last layer
 local vgg = nn.Sequential()

@@ -20,3 +20,5 @@ Wherein we take advantage of the unlabeled data
 2. Use the pretraining layer to extract features from the labeled images.  Build SVM model or fully-connected MLP to classify using these extracted features. 
 3. Submit
 
+###Convolutional Clustering
+1. Read paper

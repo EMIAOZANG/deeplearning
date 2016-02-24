@@ -2,7 +2,7 @@ require 'xlua'
 require 'optim'
 require 'cunn'
 dofile './provider.lua'
-local c = require 'trepl.colorize'
+local c = require 'trepl.colorize' --prints in color!
 
 opt = lapp[[
    -s,--save                  (default "logs")      subdirectory to save logs
@@ -20,7 +20,7 @@ opt = lapp[[
 print(opt)
 
 do -- data augmentation module -- local block of variables that will get killed
-  local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module')
+  local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module') -- extends nn.Module class, makes it usable as a layer in the nn.Sequential call
 
   function BatchFlip:__init() -- modify this to add rotation and translation to flip
     parent.__init(self)
@@ -32,7 +32,7 @@ do -- data augmentation module -- local block of variables that will get killed
       local bs = input:size(1) -- list of images (1st dimension is image id's)
       local flip_mask = torch.randperm(bs):le(bs/2) -- random list of 1s and 0s, so randomly flips some images.  different for each epoch
       for i=1,input:size(1) do
-        if flip_mask[i] == 1 then image.hflip(input[i], input[i]) end --performs a horizontal flip
+        if flip_mask[i] == 1 then image.hflip(input[i], input[i]) end --performs a horizontal flip.  could add in vertical flip
       end
     end
     self.output:set(input)
@@ -43,7 +43,7 @@ end
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
 model:add(nn.BatchFlip():float()) -- call batch flip.  can add another rotation layer or translation if you like
-model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
+model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
 model:add(dofile('models/'..opt.model..'.lua'):cuda()) --load model from external file
 model:get(2).updateGradInput = function(input) return end -- get layer 2 of the model (batchflip).  take this input and drop it on the floor.  won't do anything in the backprop stage
 
@@ -55,8 +55,8 @@ end
 print(model)
 
 print(c.blue '==>' ..' loading data')
-provider = torch.load 'provider.t7'
-provider.trainData.data = provider.trainData.data:float()
+provider = torch.load 'provider.t7' --load provider data
+provider.trainData.data = provider.trainData.data:float() --convert to float
 provider.valData.data = provider.valData.data:float()
 
 confusion = optim.ConfusionMatrix(10)
@@ -97,7 +97,7 @@ function train()
   -- remove last element so that all the batches have equal size.  This removes the "remainder" when you divide the data by batch size
   indices[#indices] = nil
 
-  local tic = torch.tic()
+  local tic = torch.tic() --start timer
   for t,v in ipairs(indices) do
     xlua.progress(t, #indices) -- progress bar is cool
 
@@ -122,7 +122,7 @@ function train()
 
   confusion:updateValids()
   print(('Train accuracy: '..c.cyan'%.2f'..' %%\t time: %.2f s'):format(
-        confusion.totalValid * 100, torch.toc(tic)))
+        confusion.totalValid * 100, torch.toc(tic))) -- toc stops timer
 
   train_acc = confusion.totalValid * 100
 
