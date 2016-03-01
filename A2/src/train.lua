@@ -138,6 +138,8 @@ function val()
   local bs = 25
   for i=1,provider.valData.data:size(1),bs do
     local outputs = model:forward(provider.valData.data:narrow(1,i,bs))
+print(outputs)
+print(torch.max(outputs,2))
     confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
   end
 
