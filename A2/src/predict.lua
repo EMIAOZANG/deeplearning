@@ -132,7 +132,7 @@ function save_pred_file(fname, preds)
    ]]
 
    local file = io.open(fname, "w")
-   file:write("Id, Predictions\n")
+   file:write("Id,Prediction\n")
    io.close(file)
 
    local file = io.open(fname,"a") 
