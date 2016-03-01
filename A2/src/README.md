@@ -21,6 +21,12 @@ Training:
 th train.lua --model vgg_bn_drop -s logs/vgg
 ```
 
+Predicting:
+```bash
+th predict.lua
+```
+'predictions.csv' file will be generated in the working directory 
+
 Note: cross-validation is not required for this assignment.
 But please keep in mind that if by any chance you tend to make formal comparison with published results in the future, reading carefully the standard testing protocol is where you should start with.
 
