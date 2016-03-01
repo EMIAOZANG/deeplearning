@@ -1,7 +1,8 @@
 require 'torch'
+require 'image'
 require 'xlua'
-require 'nn'
 require 'cunn'
+require 'nn'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -17,7 +18,7 @@ do
 	   self.testData = {
 	      data = torch.Tensor(numSamples, numChannels, height, width),
 	      labels = torch.Tensor(numSamples),
-	      size = function() return data:size() end
+	      size = function() return numSamples end
 	   }
 
 	end
@@ -26,9 +27,12 @@ do
 	   --parse labels from raw data, and save the parsed data to self.testData
 	   local t = torch.ByteTensor(numSamples, numChannels, height, width)
 	   local l = torch.ByteTensor(numSamples)
+	   idx = 1
+	   print(#d)
 	   for i = 1, #d do --multiple data folds, images in the same fold has same label
 	      local this_d = d[i]
-	      for j = 1, #this_d[j] do --this_d is a image record 
+	      print("this_d size:"..#this_d)
+	      for j = 1, #this_d do --this_d is a image record 
 	         t[idx]:copy(this_d[j])
 	         l[idx] = i
 	         idx = idx + 1
@@ -46,7 +50,7 @@ do
 	
 	   --preprocess testSet
 	   local normalization = nn.SpatialContrastiveNormalization(1,image.gaussian1D(7))
-	   for i = 1, trainData:size() do
+	   for i = 1, testData:size() do
 	      xlua.progress(i, testData:size())
 	      local rgb = testData.data[i]
 	      local yuv = image.rgb2yuv(rgb)
@@ -79,23 +83,39 @@ end
 function predict(modelPath, testPath, height, width)
    -- loads model and runs it on test dataset to generate prediction.csv
    local model = torch.load(modelPath)
+   collectgarbage()
    local rawTestData = torch.load(testPath)
    local dataProvider = DataParser(8000, 3, 96, 96)
-   dataProvider:parseDataLabel(rawTestData, 8000, 3, 96, 96)
+   print(#rawTestData.data)
+   dataProvider:parseDataLabel(rawTestData.data, 8000, 3, 96, 96)
+   dataProvider:normalize()
 
    model:evaluate()
    
    print('==> getting predictions from test set:')
+   print((dataProvider.testData):size())
 
-   local preds = torch.Tensor(testData:size())
+   local preds = torch.Tensor(dataProvider.testData.data:size(1)) 
+print(preds:size())
+   collectgarbage()
+   
+   local bs = 25
 
-   for t = 1, testData:size() do
-      xlua.progress(t, testData:size())
+   --only mini-batch supported?
+   for t = 1, (dataProvider.testData.data):size(1), bs do
+print("t="..t)
 
-      local input = testData.data[t]:double()
-      local m, pred = torch.max(model:forward(input),1)
+      --local miniBatch = torch.CudaTensor(1,(dataProvider.testData.data):size(2),(dataProvider.testData.data):size(3), (dataProvider.testData.data):size(4))
+      --print('miniBatch size:'..miniBatch:size())
+      local input = dataProvider.testData.data:cuda()
+      --miniBatch[{{1},{},{},{}}]=input
+      print(input:size())
+      --local pred = model:forward(miniBatch)
+      local pred, idx = torch.max(model:forward(input:narrow(1,t,bs)),2)
 
-      preds[t] = pred
+print(idx:size())
+      preds[{{t,t+bs-1}}] = idx:int()
+      collectgarbage()
    end
    return preds
 end
@@ -123,7 +143,7 @@ function save_pred_file(fname, preds)
    io.close(file)
 end
 
-mPath = "stl-10/model.net"
+mPath = "log/sample/model.net"
 tPath = "stl-10/test.t7b"
 predictions = predict(mPath, tPath, 96, 96)
 save_pred_file("predictions.csv", predictions)

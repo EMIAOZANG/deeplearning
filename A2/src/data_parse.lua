@@ -26,6 +26,6 @@ end
 
 
 -- Usage example, parsing the test data
-test_data = torch.load('test.t7b')
+test_data = torch.load('stl-10/test.t7b')
 parse_test_data = parseData(test_data.data)
---torch.save('parsed_test.t7b', parse_test_data)
+torch.save('parsed_test.t7b', parse_test_data)
