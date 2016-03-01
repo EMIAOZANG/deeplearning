@@ -11,9 +11,13 @@
 
 ##Pseudo-Labels
 1. get two subsets of unlabeled: 1 of 4000 samples, other of 8000 samples.
+
   local indices = torch.randperm(dataset:size()[1]):long():split(4000) -- creates tensor of random indices
+
   sample = dataset:index(1,indices[1])
+
   torch.save()
+
 1. (optional) augment labeled data
 1. predict on unlabeled data
 1. save predictions as labels
