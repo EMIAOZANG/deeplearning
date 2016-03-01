@@ -1,6 +1,39 @@
 require 'torch'
 require 'image'
 require 'nn'
+require 'xlua'
+require 'optim'
+local c = require 'trepl.colorize' --prints in color!
+
+
+dofile(paths.concat('provider.lua'))
+print '==> processing options'
+
+print(c.blue '==>' ..' loading data')
+provider = torch.load '../dat/provider.t7' --load provider data
+provider.trainData.data = provider.trainData.data:float() --convert to float
+provider.valData.data = provider.valData.data:float()
+
+cmd = torch.CmdLine()
+
+opt = lapp[[
+   -s,--save                  (default "../dat/augmented_images")      subdirectory to save logs
+   -b,--batchSize             (default 64)          batch size
+   -r,--learningRate          (default 1)        learning rate
+   --learningRateDecay        (default 1e-7)      learning rate decay
+   --weightDecay              (default 0.0005)      weightDecay
+   -m,--momentum              (default 0.9)         momentum
+   --epoch_step               (default 25)          epoch step
+   --model                    (default vgg_bn_drop)     model name
+   --max_epoch                (default 300)           maximum number of iterations
+   --backend                  (default nn)            backend
+]]
+
+print(opt)
+
+
+print('Will save at '..opt.save)
+paths.mkdir(opt.save)
 
 function get_im_var(im)
     var=0
@@ -8,32 +41,6 @@ function get_im_var(im)
         var = var + torch.var(im[j])
     end
     return var
-end
-
-function augment_images(images, batch_num, num_transformations, patch_size)
-    --[[
-    takes batch of images, applies transformations, gives them labels, and returns features and labels
-    args: images.  4D tensor of images
-    returns:
-        features: 4D tensor of images
-        labels: 1D tensor of labels
-    --]]
-    local batch_size = images:size(1)
-    local labels = torch.Tensor(batch_size * num_transformations)
-    local features = torch.Tensor(batch_size * num_transformations,3,patch_size,patch_size)
-    
-    for i=1,batch_size do
-        for j=1,num_transformations do
-            local image = images[i]
-            image = get_patch(image, 2*patch_size, 0.05)
-            image = center_crop(image, patch_size)
-            image = rotate(image, patch_size)
-            image = shift_hue(image)
-            labels[(i-1)*num_transformations + j] = (batch_num-1) * (batch_size-1) + i
-            features[(i-1)*num_transformations + j] = image
-        end
-    end
-    return features, labels
 end
 
 function get_patch(im, patch_size, min_var)
@@ -91,11 +98,91 @@ function rotate(im)
     return im
 end
 
-function shift_hue(im)
+function process_rand()
+    -- for producing random numbers in the appropriate range for the shift_hue function
+    vect = torch.rand(3)
+    vect[1] = vect[1]*(4-.25) + .25
+    vect[2] = vect[2]*(1.4-0.7) + 0.7
+    vect[3] = vect[3]*(0.1+0.1) - 0.1
+    return vect
+end
+
+function shift_hsl(im)
     -- shift hue by a random normal number mean 0 var 1/10
-    local hue_shift = torch.div(torch.randn(1),10)
+    --local hue_shift = torch.div(torch.randn(1),10)
+    local hue_shift = torch.uniform(-0.1,0.1)
+    local s_shift = process_rand()
+    local l_shift = process_rand()
     im = image.rgb2hsl(im)
-    im[1]:add(hue_shift[1])
+
+    --shift hue
+    im[1]:add(hue_shift) 
+    
+    --shift saturation
+    im[2]:pow(s_shift[1])
+    im[2]:mul(s_shift[2])
+    im[2]:add(s_shift[3])
+
+    --shift lightness
+    im[3]:pow(l_shift[1])
+    im[3]:mul(l_shift[2])
+    im[3]:add(l_shift[3])
     im = image.hsl2rgb(im)
     return im
 end
+
+function augment_image_batch(image_batch, batch_num, num_transformations, patch_size)
+    --[[
+    takes batch of images, applies transformations, gives them labels, and returns features and labels
+    args: images.  4D tensor of images
+    saves:
+        features: 4D tensor of images
+        labels: 1D tensor of labels
+    --]]
+    local batch_size = image_batch:size(1)
+    local labels = torch.Tensor(batch_size * num_transformations)
+    local features = torch.Tensor(batch_size * num_transformations,3,patch_size,patch_size)
+    
+    for i=1,batch_size do
+        for j=1,num_transformations do
+            local image = image_batch[i]
+            image = get_patch(image, 2*patch_size, 0.05)
+            image = center_crop(image, patch_size)
+            image = rotate(image, patch_size)
+            image = shift_hue(image)
+            labels[(i-1)*num_transformations + j] = (batch_num-1) * (batch_size-1) + i
+            features[(i-1)*num_transformations + j] = image
+        end
+    end
+
+    local data = {features=features, labels=labels}
+    local filepath = opt.save.."/batch_"..batch_num..".t7"
+    torch.save(filepath,data)
+end
+
+function augment_all_data(dataset, num_transformations, patch_size)
+
+    -- shuffle data and draw random batches
+    local indices = torch.randperm(dataset:size()[1]):long():split(opt.batchSize)
+    indices[#indices] = nil -- remove last element so that all the batches have equal size.  This removes the "remainder" when you divide the data by batch size
+
+    for batch_num,v in ipairs(indices) do
+        -- create batch
+        batch = dataset:index(1,v)
+        augment_image_batch(batch,batch_num,num_transformations,patch_size)
+        -- START HERE: TODO: run and debug
+    end
+end
+
+
+
+
+--[[
+TODO:
+0. Load 'train' or 'val' into memory, 
+1. Load 'extra' into memory, shuffle, save 8000 to 'mini-extra.t7b'
+2. Load 'mini-extra' into memory.  In batches of 100 at a time: augment batch, save to file
+3. shuffle batch before training
+
+Load data, augment, and return
+--]]
