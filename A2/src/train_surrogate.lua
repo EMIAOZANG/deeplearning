@@ -153,7 +153,7 @@ function train()
       return f,gradParameters
     end
 
-    --TEMP optim.sgd(feval, parameters, optimState)
+    optim.sgd(feval, parameters, optimState)
   end
 
   confusion:updateValids()
@@ -246,7 +246,7 @@ for i=1,opt.max_epoch do
   for k,file in pairs(file_list) do
     load_data(file)
     train()
-    --val()
+    val()
   end
 end
 

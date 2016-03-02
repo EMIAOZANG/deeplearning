@@ -27,14 +27,6 @@ opt = lapp[[
    --data                     (default "train")      data to augment
    -s,--save                  (default "../dat/augmented_images")      subdirectory to save logs
    -b,--batchSize             (default 64)          batch size
-   -r,--learningRate          (default 1)        learning rate
-   --learningRateDecay        (default 1e-7)      learning rate decay
-   --weightDecay              (default 0.0005)      weightDecay
-   -m,--momentum              (default 0.9)         momentum
-   --epoch_step               (default 25)          epoch step
-   --model                    (default vgg_bn_drop)     model name
-   --max_epoch                (default 300)           maximum number of iterations
-   --backend                  (default nn)            backend
    --num_transformations      (default 100)         number of trasnformations/augmentations per image
    --patch_size               (default 32)          size of patches to select from each image
 ]]
@@ -189,14 +181,3 @@ elseif opt.data=="val" then
     augment_all_data(provider.valData.data)
 else print("Ineligible dataset")
 end
-
-
---[[
-TODO:
-0. Load 'train' or 'val' into memory, 
-1. Load 'extra' into memory, shuffle, save 8000 to 'mini-extra.t7b'
-2. Load 'mini-extra' into memory.  In batches of 100 at a time: augment batch, save to file
-3. shuffle batch before training
-
-Load data, augment, and return
---]]
