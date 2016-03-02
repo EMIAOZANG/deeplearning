@@ -43,10 +43,13 @@ do -- data augmentation module -- local block of variables that will get killed
 end
 
 print(c.blue '==>' ..' configuring model')
+dofile('models/'..opt.model..'.lua')
+vgg = build_surrogate_classifier(opt.num_targets)
+
 local model = nn.Sequential()
 model:add(nn.BatchFlip():float()) -- call batch flip.  can add another rotation layer or translation if you like
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
-model:add(dofile('models/'..opt.model..'.lua'):cuda()) --load model from external file
+model:add(vgg):cuda()) --load model from external file
 model:get(2).updateGradInput = function(input) return end -- get layer 2 of the model (batchflip).  take this input and drop it on the floor.  won't do anything in the backprop stage
 
 if opt.backend == 'cudnn' then
@@ -56,7 +59,7 @@ end
 
 print(model)
 
-confusion = optim.ConfusionMatrix(10)
+confusion = optim.ConfusionMatrix(4000)
 
 print('Will save at '..opt.save)
 paths.mkdir(opt.save)
