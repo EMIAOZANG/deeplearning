@@ -55,7 +55,7 @@ end
 print(model)
 
 print(c.blue '==>' ..' loading data')
-provider = torch.load 'provider.t7' --load provider data
+provider = torch.load '../dat/provider.t7' --load provider data
 provider.trainData.data = provider.trainData.data:float() --convert to float
 provider.valData.data = provider.valData.data:float()
 
@@ -112,7 +112,7 @@ function train()
       local f = criterion:forward(outputs, targets) --how well did you do
       local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
       model:backward(inputs, df_do)
-
+      
       confusion:batchAdd(outputs, targets)
 
       return f,gradParameters
