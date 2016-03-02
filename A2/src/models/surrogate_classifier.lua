@@ -5,7 +5,7 @@ surrogate_classifier.lua
 
 require 'nn'
 
-SEED_CLASSES = 10
+SEED_CLASSES = 4000
 
 local vgg = nn.Sequential()
 

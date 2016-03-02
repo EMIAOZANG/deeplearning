@@ -1,6 +1,7 @@
 require 'xlua'
 require 'optim'
 require 'cunn'
+require 'image'
 local c = require 'trepl.colorize' --prints in color!
 
 opt = lapp[[
@@ -64,7 +65,6 @@ valLogger:setNames{'% mean class accuracy (train set)', '% mean class accuracy (
 valLogger.showPlot = false
 
 parameters,gradParameters = model:getParameters()
-
 
 print(c.blue'==>' ..' setting criterion')
 criterion = nn.CrossEntropyCriterion():cuda() --loss function
@@ -135,14 +135,14 @@ function train()
   local tic = torch.tic() --start timer
   for t,v in ipairs(indices) do
     xlua.progress(t, #indices) -- progress bar is cool
-
+    
     local inputs = provider.trainData.data:index(1,v)
     targets:copy(provider.trainData.labels:index(1,v))
 
     local feval = function(x) --this is pretty much always the same for all torch programs
       if x ~= parameters then parameters:copy(x) end
       gradParameters:zero()
-      
+
       local outputs = model:forward(inputs)
       local f = criterion:forward(outputs, targets) --how well did you do
       local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
@@ -152,7 +152,8 @@ function train()
 
       return f,gradParameters
     end
-    optim.sgd(feval, parameters, optimState)
+
+    --TEMP optim.sgd(feval, parameters, optimState)
   end
 
   confusion:updateValids()
@@ -173,7 +174,7 @@ function val()
   local bs = 25
   for i=1,provider.valData.data:size(1),bs do
     local outputs = model:forward(provider.valData.data:narrow(1,i,bs))
-print(outputs)
+--print(outputs)
 print(torch.max(outputs,2))
     confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
   end
@@ -245,6 +246,7 @@ for i=1,opt.max_epoch do
   for k,file in pairs(file_list) do
     load_data(file)
     train()
-    val()
+    --val()
+  end
 end
 

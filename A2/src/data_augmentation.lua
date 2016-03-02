@@ -15,7 +15,7 @@ require 'optim'
 local c = require 'trepl.colorize' --prints in color!
 
 
-dofile('../dat/provider.lua')
+dofile('provider.lua')
 print '==> processing options'
 
 print(c.blue '==>' ..' loading data')
@@ -174,14 +174,12 @@ function augment_all_data(dataset)
 
     -- shuffle data and draw random batches
     local indices = torch.randperm(dataset:size()[1]):long():split(opt.batchSize)
-    indices[#indices] = nil -- remove last element so that all the batches have equal size.  This removes the "remainder" when you divide the data by batch size
 
     for batch_num,v in ipairs(indices) do
         print("Augmenting batch "..batch_num.."...")
         -- create batch
         batch = dataset:index(1,v)
         augment_image_batch(batch,batch_num)
-        -- START HERE: TODO: run and debug
     end
 end
 
