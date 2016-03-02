@@ -17,6 +17,7 @@ opt = lapp[[
    --backend                  (default nn)            backend
    --imageDir                 (default '../dat/augmented_images')  directory of augmented image data
    --val_pct                  (default 0.1)           fraction of data to devote to validation
+   --num_targets	      (default 4000)	     number of surrogate classes
 ]]
 
 print(opt)
@@ -59,7 +60,7 @@ end
 
 print(model)
 
-confusion = optim.ConfusionMatrix(4000)
+confusion = optim.ConfusionMatrix(opt.num_targets)
 
 print('Will save at '..opt.save)
 paths.mkdir(opt.save)
@@ -151,12 +152,18 @@ function train()
       local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
       model:backward(inputs, df_do)
 
+print("outputs size")
+print(outputs:size())
+print("targets size")
+print(targets:size())
       confusion:batchAdd(outputs, targets)
 
       return f,gradParameters
     end
 
+    print("running sgd...")
     optim.sgd(feval, parameters, optimState)
+    print("finished sgd")
   end
 
   confusion:updateValids()
