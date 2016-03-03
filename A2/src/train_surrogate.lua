@@ -106,19 +106,22 @@ function train_val_split(data,val_pct)
     
   both = {trainData=trainData,valData=valData}
   return both
+  trainData = nil
+  valData = nil
+  collectgarbage()
 end
 
 function load_data(fname)
   --load batch
   print(c.blue '==>' ..' loading '..fname..'...')
-  data = torch.load(opt.imageDir..'/'..fname)
+  local data = torch.load(opt.imageDir..'/'..fname)
   data.features = data.features:float()
   data.labels = data.labels:float()
 
   -- train val split
-  provider = train_val_split(data,opt.val_pct)
-  provider.trainData.data = provider.trainData.data:float() --convert to float
-  provider.valData.data = provider.valData.data:float()
+  batch = train_val_split(data,opt.val_pct)
+  batch.trainData.data = batch.trainData.data:float() --convert to float
+  batch.valData.data = batch.valData.data:float()
 end
 
 
@@ -132,16 +135,16 @@ function train()
   print(c.blue '==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
   local targets = torch.CudaTensor(opt.batchSize)
-  local indices = torch.randperm(provider.trainData.data:size(1)):long():split(opt.batchSize)
-  -- remove last element so that all the batches have equal size.  This removes the "remainder" when you divide the data by batch size
+  local indices = torch.randperm(batch.trainData.data:size(1)):long():split(opt.batchSize) --get indices to split data into minibatches
+  -- remove last element so that all the minibatches have equal size.  This removes the "remainder" when you divide the data by batch size
   indices[#indices] = nil
 
   local tic = torch.tic() --start timer
-  for t,v in ipairs(indices) do
+  for t,v in ipairs(indices) do -- iterate through mini-batches
     xlua.progress(t, #indices) -- progress bar is cool
     
-    local inputs = provider.trainData.data:index(1,v)
-    targets:copy(provider.trainData.labels:index(1,v))
+    local inputs = batch.trainData.data:index(1,v)
+    targets:copy(batch.trainData.labels:index(1,v))
 
     local feval = function(x) --this is pretty much always the same for all torch programs
       if x ~= parameters then parameters:copy(x) end
@@ -176,11 +179,11 @@ function val()
   model:evaluate()
   print(c.blue '==>'.." valing")
   local bs = 25
-  for i=1,provider.valData.data:size(1),bs do
-    local outputs = model:forward(provider.valData.data:narrow(1,i,bs))
+  for i=1,batch.valData.data:size(1),bs do
+    local outputs = model:forward(batch.valData.data:narrow(1,i,bs))
 --print(outputs)
 --print(torch.max(outputs,2))
-    confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
+    confusion:batchAdd(outputs, batch.valData.labels:narrow(1,i,bs))
   end
 
   confusion:updateValids()
@@ -251,6 +254,8 @@ for i=1,opt.max_epoch do
     load_data(file)
     train()
     val()
+    batch = nil
+    collectgarbage()
   end
 end
 
