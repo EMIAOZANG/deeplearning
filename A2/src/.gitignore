@@ -6,3 +6,4 @@ log/*
 log*/*
 logs/*
 logs
+*.t7b
