@@ -4,6 +4,12 @@ require 'xlua'
 require 'cunn'
 require 'nn'
 
+opt = lapp[[
+   
+   -i, --inputFile (default "stl-10/test.t7b")
+   -o, --outputFile (default "../dat/predictions.csv")
+
+]]
 torch.setdefaulttensortype('torch.FloatTensor')
 
 --class definition for DataParser
