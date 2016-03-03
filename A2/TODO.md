@@ -1,13 +1,12 @@
 #TODO
 
+##Questions for Lab
+1. how do I connect surrogate classifier to final classifier?  I think just import the model and hit model:forward(inputs); but then how do I get out the last hidden layer?
 
 ##Surrogate Classes
-1. fix mixmatch between classes on surrogate classifier.
-1. run data augmentation on unlabeled data
-1. train surrogate classifier on labeled data
-1. train surrogate classifier on labeled + unlabeled data
+1. train surrogate classifier on unlabeled data
 1. run labeled data through surrogate classifier, then feed last hidden layer through simple classifier
-1. validate, test
+1. validate, test, tweak models
 
 
 ##Pseudo-Labels
@@ -26,5 +25,6 @@
 1. validate, test
 
 #Write-up
+1. answer questions 1 and 2
 1. write visualization script
 1. use t-sne to visualize feature clusters. 
