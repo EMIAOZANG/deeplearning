@@ -115,13 +115,13 @@ function predict(modelPath, testPath, height, width)
    local model = torch.load(modelPath)
    collectgarbage()
    local rawTestData = torch.load(testPath)
-   local dataProvider = DataParser(8000, 3, 96, 96)
    if opt.pseudoLabelMode then
       local dataProvider = DataParser(#rawTestData,3,96,96)
       dataProvider:parseTensorData(rawTestData) -- at this time rawTestData is going to be a n*3*96*96 matrix
    else
 
-   print(#rawTestData.data)
+      print(#rawTestData.data)
+      local dataProvider = DataParser(8000, 3, 96, 96)
       dataProvider:parseData(rawTestData.data, 8000, 3, 96, 96)
    end
    dataProvider:normalize()
