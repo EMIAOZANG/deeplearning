@@ -17,12 +17,13 @@ do
 	   self.imgWidth = width
 	   self.testData = {
 	      data = torch.Tensor(numSamples, numChannels, height, width),
-	      labels = torch.Tensor(numSamples),
+	      -- we don't really need labels, labels = torch.Tensor(numSamples),
 	      size = function() return numSamples end
 	   }
 
 	end
 	
+   --[[
 	function DataParser:parseDataLabel(d, numSamples, numChannels, height, width)
 	   --parse labels from raw data, and save the parsed data to self.testData
 	   local t = torch.ByteTensor(numSamples, numChannels, height, width)
@@ -41,6 +42,21 @@ do
 	   assert(idx == numSamples + 1) --check if we have imported all images
 	   self.testData.data = t:float()
 	   self.testData.labels = l:float()
+	end
+   ]]--
+
+   function parseData(d, numSamples, numChannels, height, width)
+      local t = torch.ByteTensor(numSamples, numChannels, height, width)
+	   local idx = 1
+	   for i = 1, #d do
+	      local this_d = d[i]
+	      for j = 1, #this_d do
+	         t[idx]:copy(this_d[j])
+	         idx = idx + 1
+	      end
+	   end
+	   assert(idx == numSamples+1)
+	   self.testData.data = t:float()
 	end
 	
 	function DataParser:normalize()
@@ -87,7 +103,7 @@ function predict(modelPath, testPath, height, width)
    local rawTestData = torch.load(testPath)
    local dataProvider = DataParser(8000, 3, 96, 96)
    print(#rawTestData.data)
-   dataProvider:parseDataLabel(rawTestData.data, 8000, 3, 96, 96)
+   dataProvider:parseData(rawTestData.data, 8000, 3, 96, 96)
    dataProvider:normalize()
 
    model:evaluate()
@@ -141,6 +157,23 @@ function save_pred_file(fname, preds)
       file:write(t..','..preds[t] .. "\n")
    end
    io.close(file)
+end
+
+function save_as_train_file(fname, preds, imgData)
+   --save data as .t7 file
+   --[[
+      args:
+      fname: file name of save file
+      preds: tensor of predictions
+      imgData: image data tensor corresponding to predictions
+      returns:
+      non, save to disk
+   ]]
+
+   plabelData = {
+      data = imgData:copy(),
+      labels = preds:copy(),
+   }
 end
 
 mPath = "log/sample/model.net"

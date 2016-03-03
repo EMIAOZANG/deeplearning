@@ -4,6 +4,7 @@ require 'xlua'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 
+
 -- parse STL-10 data from table into Tensor
 function parseDataLabel(d, numSamples, numChannels, height, width)
    local t = torch.ByteTensor(numSamples, numChannels, height, width)
