@@ -2,7 +2,8 @@
 
 
 ##Surrogate Classes
-1. run and debug data augmentation script
+1. fix mixmatch between classes on surrogate classifier.
+1. run data augmentation on unlabeled data
 1. train surrogate classifier on labeled data
 1. train surrogate classifier on labeled + unlabeled data
 1. run labeled data through surrogate classifier, then feed last hidden layer through simple classifier

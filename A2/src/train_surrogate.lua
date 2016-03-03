@@ -1,7 +1,7 @@
 require 'xlua'
 require 'optim'
 require 'cunn'
-dofile './provider.lua'
+require 'image'
 local c = require 'trepl.colorize' --prints in color!
 
 opt = lapp[[
@@ -12,9 +12,12 @@ opt = lapp[[
    --weightDecay              (default 0.0005)      weightDecay
    -m,--momentum              (default 0.9)         momentum
    --epoch_step               (default 25)          epoch step
-   --model                    (default vgg_bn_drop)     model name
+   --model                    (default surrogate_classifier)     model name
    --max_epoch                (default 300)           maximum number of iterations
    --backend                  (default nn)            backend
+   --imageDir                 (default '../dat/augmented_images')  directory of augmented image data
+   --val_pct                  (default 0.1)           fraction of data to devote to validation
+   --num_targets	      (default 4000)	     number of surrogate classes
 ]]
 
 print(opt)
@@ -41,10 +44,13 @@ do -- data augmentation module -- local block of variables that will get killed
 end
 
 print(c.blue '==>' ..' configuring model')
+dofile('models/'..opt.model..'.lua')
+vgg = build_surrogate_classifier(opt.num_targets)
+
 local model = nn.Sequential()
 model:add(nn.BatchFlip():float()) -- call batch flip.  can add another rotation layer or translation if you like
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
-model:add(dofile('models/'..opt.model..'.lua'):cuda()) --load model from external file
+model:add(vgg):cuda()) --load model from external file
 model:get(2).updateGradInput = function(input) return end -- get layer 2 of the model (batchflip).  take this input and drop it on the floor.  won't do anything in the backprop stage
 
 if opt.backend == 'cudnn' then
@@ -54,12 +60,7 @@ end
 
 print(model)
 
-print(c.blue '==>' ..' loading data')
-provider = torch.load '../dat/provider.t7' --load provider data
-provider.trainData.data = provider.trainData.data:float() --convert to float
-provider.valData.data = provider.valData.data:float()
-
-confusion = optim.ConfusionMatrix(10)
+confusion = optim.ConfusionMatrix(opt.num_targets)
 
 print('Will save at '..opt.save)
 paths.mkdir(opt.save)
@@ -68,7 +69,6 @@ valLogger:setNames{'% mean class accuracy (train set)', '% mean class accuracy (
 valLogger.showPlot = false
 
 parameters,gradParameters = model:getParameters()
-
 
 print(c.blue'==>' ..' setting criterion')
 criterion = nn.CrossEntropyCriterion():cuda() --loss function
@@ -81,6 +81,45 @@ optimState = {
   momentum = opt.momentum,
   learningRateDecay = opt.learningRateDecay,
 }
+
+function train_val_split(data,val_pct)
+    --[[
+    Split data into test and training sets, according to validation percent
+    
+    returns:
+        both: table containing trainData and valData
+    ]]
+  local size = data.labels:size()[1]
+  local shuffle = torch.randperm(size):long()
+  local val_samples = torch.round(val_pct*size)
+  local train_samples = size - val_samples
+  local train_idx = shuffle[{{1,train_samples}}]
+  local val_idx = shuffle[{{train_samples+1,size}}]
+      
+  local trainData = {}
+  trainData['data']=data.features:index(1,train_idx)
+  trainData['labels']=data.labels:index(1,train_idx)
+
+  local valData = {}
+  valData['data']=data.features:index(1,val_idx)
+  valData['labels']=data.labels:index(1,val_idx)
+    
+  both = {trainData=trainData,valData=valData}
+  return both
+end
+
+function load_data(fname)
+  --load batch
+  print(c.blue '==>' ..' loading '..fname..'...')
+  data = torch.load(opt.imageDir..'/'..fname)
+  data.features = data.features:float()
+  data.labels = data.labels:float()
+
+  -- train val split
+  provider = train_val_split(data,opt.val_pct)
+  provider.trainData.data = provider.trainData.data:float() --convert to float
+  provider.valData.data = provider.valData.data:float()
+end
 
 
 function train()
@@ -100,24 +139,31 @@ function train()
   local tic = torch.tic() --start timer
   for t,v in ipairs(indices) do
     xlua.progress(t, #indices) -- progress bar is cool
-
+    
     local inputs = provider.trainData.data:index(1,v)
     targets:copy(provider.trainData.labels:index(1,v))
 
     local feval = function(x) --this is pretty much always the same for all torch programs
       if x ~= parameters then parameters:copy(x) end
       gradParameters:zero()
-      
+
       local outputs = model:forward(inputs)
       local f = criterion:forward(outputs, targets) --how well did you do
       local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
       model:backward(inputs, df_do)
-      
+
+print("outputs size")
+print(outputs:size())
+print("targets size")
+print(targets:size())
       confusion:batchAdd(outputs, targets)
 
       return f,gradParameters
     end
+
+    print("running sgd...")
     optim.sgd(feval, parameters, optimState)
+    print("finished sgd")
   end
 
   confusion:updateValids()
@@ -138,7 +184,7 @@ function val()
   local bs = 25
   for i=1,provider.valData.data:size(1),bs do
     local outputs = model:forward(provider.valData.data:narrow(1,i,bs))
-print(outputs)
+--print(outputs)
 print(torch.max(outputs,2))
     confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
   end
@@ -193,9 +239,24 @@ print(torch.max(outputs,2))
 end
 
 
-for i=1,opt.max_epoch do
-  train()
-  val()
+function scandir(directory)
+    local i, t, popen = 0, {}, io.popen
+    local pfile = popen('ls "'..directory..'"')
+    for filename in pfile:lines() do
+        i = i + 1
+        t[i] = filename
+    end
+    pfile:close()
+    return t
 end
 
+file_list = scandir(opt.imageDir)
+
+for i=1,opt.max_epoch do
+  for k,file in pairs(file_list) do
+    load_data(file)
+    train()
+    val()
+  end
+end
 
