@@ -8,7 +8,7 @@ opt = lapp[[
    
    -i, --inputFile (default "stl-10/test.t7b")
    -o, --outputFile (default "../dat/predictions.csv")
-
+   -p, --pseudoLabelMode (defaul False)
 ]]
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -64,7 +64,15 @@ do
 	   assert(idx == numSamples+1)
 	   self.testData.data = t:float()
 	end
-	
+
+   function parseTensorData(d)
+      --[[
+      Just copy the loaded tensor to self.testData.data for future processing
+      ]]
+      self.testData.data:copy(d) 
+      collectgarbage()
+   end
+
 	function DataParser:normalize()
 	   local testData = self.testData
 	   print 'preprocessing data (color space + normalization)'
@@ -108,8 +116,14 @@ function predict(modelPath, testPath, height, width)
    collectgarbage()
    local rawTestData = torch.load(testPath)
    local dataProvider = DataParser(8000, 3, 96, 96)
+   if opt.pseudoLabelMode then
+      local dataProvider = DataParser(#rawTestData,3,96,96)
+      dataProvider:parseTensorData(rawTestData) -- at this time rawTestData is going to be a n*3*96*96 matrix
+   else
+
    print(#rawTestData.data)
-   dataProvider:parseData(rawTestData.data, 8000, 3, 96, 96)
+      dataProvider:parseData(rawTestData.data, 8000, 3, 96, 96)
+   end
    dataProvider:normalize()
 
    model:evaluate()
@@ -180,9 +194,16 @@ function save_as_pseudo_label_file(fname, preds, imgData)
       data = imgData:copy(),
       labels = preds:copy(),
    }
+   torch.save(fname, plabelData)
 end
 
 mPath = "log/sample/model.net"
-tPath = "stl-10/test.t7b"
-predictions = predict(mPath, tPath, 96, 96)
-save_pred_file("predictions.csv", predictions)
+tPath = opt.inputFile
+pdPath = "../dat/parsed_extra.t7b"
+predictions = predict(mPath, tPath, 96, 96)	
+if opt.pseudoLabelMode then
+   rawImg = torch.load(pdPath) 
+   save_as_pseudo_label_file("../dat/stl-10/pseudolabels.t7b", predictions, rawImg)
+else
+   save_pred_file("predictions.csv", predictions)
+end
