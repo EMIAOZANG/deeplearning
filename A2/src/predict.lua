@@ -165,7 +165,7 @@ function save_pred_file(fname, preds)
    io.close(file)
 end
 
-function save_as_train_file(fname, preds, imgData)
+function save_as_pseudo_label_file(fname, preds, imgData)
    --save data as .t7 file
    --[[
       args:
