@@ -18,15 +18,10 @@ local c = require 'trepl.colorize' --prints in color!
 dofile('provider.lua')
 print '==> processing options'
 
-print(c.blue '==>' ..' loading data')
-provider = torch.load '../dat/provider.t7' --load provider data
-provider.trainData.data = provider.trainData.data:float() --convert to float
-provider.valData.data = provider.valData.data:float()
-
 opt = lapp[[
-   --data                     (default "train")      data to augment
+   -d,--data                     (default "train")      data to augment
    -s,--save                  (default "../dat/augmented_images")      subdirectory to save logs
-   -b,--batchSize             (default 64)          batch size
+   -b,--batchSize             (default 1000)          batch size
    --num_transformations      (default 100)         number of trasnformations/augmentations per image
    --patch_size               (default 32)          size of patches to select from each image
 ]]
@@ -175,9 +170,17 @@ function augment_all_data(dataset)
     end
 end
 
+print(c.blue '==>' ..' loading data')
 if opt.data=="train" then
+    provider = torch.load '../dat/provider.t7' --load provider data
+    provider.trainData.data = provider.trainData.data:float() --convert to float
     augment_all_data(provider.trainData.data)
 elseif opt.data=="val" then
+    provider = torch.load '../dat/provider.t7' --load provider data
+    provider.valData.data = provider.valData.data:float()
     augment_all_data(provider.valData.data)
+elseif opt.data=="extra" then
+    extra = torch.load '../dat/parsed_extra.t7b'
+    augment_all_data(extra:float())
 else print("Ineligible dataset")
 end

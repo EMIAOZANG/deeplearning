@@ -15,7 +15,7 @@ opt = lapp[[
    --model                    (default surrogate_classifier)     model name
    --max_epoch                (default 300)           maximum number of iterations
    --backend                  (default nn)            backend
-   --imageDir                 (default '../dat/augmented_images')  directory of augmented image data
+   --imageDir                 (default '../dat/augmented_extra')  directory of augmented image data
    --val_pct                  (default 0.1)           fraction of data to devote to validation
    --num_targets	      (default 4000)	     number of surrogate classes
 ]]
@@ -105,10 +105,10 @@ function train_val_split(data,val_pct)
   valData['labels']=data.labels:index(1,val_idx)
     
   both = {trainData=trainData,valData=valData}
-  return both
   trainData = nil
   valData = nil
   collectgarbage()
+  return both
 end
 
 function load_data(fname)
@@ -122,6 +122,7 @@ function load_data(fname)
   batch = train_val_split(data,opt.val_pct)
   batch.trainData.data = batch.trainData.data:float() --convert to float
   batch.valData.data = batch.valData.data:float()
+  data = nil
 end
 
 
@@ -249,13 +250,15 @@ end
 
 file_list = scandir(opt.imageDir)
 
+--TEMP
+load_data('batch_1.t7')
 for i=1,opt.max_epoch do
-  for k,file in pairs(file_list) do
-    load_data(file)
+  --TEMP for k,file in pairs(file_list) do 
+    --load_data(file)
     train()
     val()
-    batch = nil
+    -- TEMP batch = nil
     collectgarbage()
-  end
+  --TEMP end
 end
 

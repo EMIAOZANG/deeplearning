@@ -8,7 +8,7 @@ opt = lapp[[
    
    -i, --inputFile (default "stl-10/test.t7b")
    -o, --outputFile (default "../dat/predictions.csv")
-   -p, --pseudoLabelMode (defaul False)
+   -p, --pseudoLabelMode (default False)
 ]]
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -63,14 +63,13 @@ do
 	   end
 	   assert(idx == numSamples+1)
 	   self.testData.data = t:float()
-	end
+   end
 
    function parseTensorData(d)
       --[[
       Just copy the loaded tensor to self.testData.data for future processing
       ]]
       self.testData.data:copy(d) 
-      collectgarbage()
    end
 
 	function DataParser:normalize()
@@ -116,8 +115,10 @@ function predict(modelPath, testPath, height, width)
    collectgarbage()
    local rawTestData = torch.load(testPath)
    if opt.pseudoLabelMode then
-      local dataProvider = DataParser(#rawTestData,3,96,96)
-      dataProvider:parseTensorData(rawTestData) -- at this time rawTestData is going to be a n*3*96*96 matrix
+      print("rawTestData shape: "..rawTestData:size(1))
+      dataProvider = DataParser(rawTestData:size(1),3,96,96) 
+      --dataProvider:parseTensorData(rawTestData) -- at this time rawTestData is going to be a n*3*96*96 matrix
+      dataProvider.testData.data:copy(rawTestData)
    else
 
       print(#rawTestData.data)
@@ -190,9 +191,12 @@ function save_as_pseudo_label_file(fname, preds, imgData)
       non, save to disk
    ]]
 
+   local d = imgData
+   local l = preds:byte()
+
    plabelData = {
-      data = imgData:copy(),
-      labels = preds:copy(),
+      data = d,
+      labels = l
    }
    torch.save(fname, plabelData)
 end
