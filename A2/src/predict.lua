@@ -8,7 +8,7 @@ opt = lapp[[
    
    -i, --inputFile (default "stl-10/test.t7b")
    -o, --outputFile (default "../dat/predictions.csv")
-   -p, --pseudoLabelMode (default False)
+   -p, --pseudoLabelMode (default false)
 ]]
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -29,40 +29,19 @@ do
 
 	end
 	
-   --[[
-	function DataParser:parseDataLabel(d, numSamples, numChannels, height, width)
-	   --parse labels from raw data, and save the parsed data to self.testData
-	   local t = torch.ByteTensor(numSamples, numChannels, height, width)
-	   local l = torch.ByteTensor(numSamples)
-	   idx = 1
-	   print(#d)
-	   for i = 1, #d do --multiple data folds, images in the same fold has same label
-	      local this_d = d[i]
-	      print("this_d size:"..#this_d)
-	      for j = 1, #this_d do --this_d is a image record 
-	         t[idx]:copy(this_d[j])
-	         l[idx] = i
-	         idx = idx + 1
-	      end
-	   end
-	   assert(idx == numSamples + 1) --check if we have imported all images
-	   self.testData.data = t:float()
-	   self.testData.labels = l:float()
-	end
-   ]]--
 
-   function parseData(d, numSamples, numChannels, height, width)
+   function DataParser:parseData(d, numSamples, numChannels, height, width)
       local t = torch.ByteTensor(numSamples, numChannels, height, width)
-	   local idx = 1
-	   for i = 1, #d do
-	      local this_d = d[i]
-	      for j = 1, #this_d do
-	         t[idx]:copy(this_d[j])
-	         idx = idx + 1
-	      end
-	   end
-	   assert(idx == numSamples+1)
-	   self.testData.data = t:float()
+      local idx = 1
+	for i = 1, #d do
+	  local this_d = d[i]
+	    for j = 1, #this_d do
+	      t[idx]:copy(this_d[j])
+	      idx = idx + 1
+	    end
+	end
+	assert(idx == numSamples+1)
+	self.testData.data = t:float()
    end
 
    function parseTensorData(d)
@@ -114,15 +93,15 @@ function predict(modelPath, testPath, height, width)
    local model = torch.load(modelPath)
    collectgarbage()
    local rawTestData = torch.load(testPath)
-   if opt.pseudoLabelMode then
+   if opt.pseudoLabelMode == true then
       print("rawTestData shape: "..rawTestData:size(1))
       dataProvider = DataParser(rawTestData:size(1),3,96,96) 
       --dataProvider:parseTensorData(rawTestData) -- at this time rawTestData is going to be a n*3*96*96 matrix
       dataProvider.testData.data:copy(rawTestData)
    else
 
-      print(#rawTestData.data)
-      local dataProvider = DataParser(8000, 3, 96, 96)
+      --print(#rawTestData.data)
+      dataProvider = DataParser(8000, 3, 96, 96)
       dataProvider:parseData(rawTestData.data, 8000, 3, 96, 96)
    end
    dataProvider:normalize()
@@ -205,7 +184,7 @@ mPath = "log/sample/model.net"
 tPath = opt.inputFile
 pdPath = "../dat/parsed_extra.t7b"
 predictions = predict(mPath, tPath, 96, 96)	
-if opt.pseudoLabelMode then
+if opt.pseudoLabelMode == true then
    rawImg = torch.load(pdPath) 
    save_as_pseudo_label_file("../dat/stl-10/pseudolabels.t7b", predictions, rawImg)
 else

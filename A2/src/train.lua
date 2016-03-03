@@ -1,7 +1,7 @@
 require 'xlua'
 require 'optim'
 require 'cunn'
-dofile './provider.lua'
+
 local c = require 'trepl.colorize' --prints in color!
 
 opt = lapp[[
@@ -13,11 +13,19 @@ opt = lapp[[
    -m,--momentum              (default 0.9)         momentum
    --epoch_step               (default 25)          epoch step
    --model                    (default vgg_bn_drop)     model name
-   --max_epoch                (default 300)           maximum number of iterations
+   --max_epoch                (default 100)           maximum number of iterations
    --backend                  (default nn)            backend
+   -p, --pseudoLabelMode      (default False)      pseudolabel mode switch
 ]]
 
 print(opt)
+
+--choose which provider should be executed
+if opt.pseudoLabelMode then 
+  dofile './provider.lua'
+else
+  dofile './super_provider.lua'
+end
 
 do -- data augmentation module -- local block of variables that will get killed
   local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module') -- extends nn.Module class, makes it usable as a layer in the nn.Sequential call
