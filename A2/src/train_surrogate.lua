@@ -50,7 +50,7 @@ vgg = build_surrogate_classifier(opt.num_targets)
 local model = nn.Sequential()
 model:add(nn.BatchFlip():float()) -- call batch flip.  can add another rotation layer or translation if you like
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
-model:add(vgg):cuda()) --load model from external file
+model:add(vgg:cuda()) --load model from external file
 model:get(2).updateGradInput = function(input) return end -- get layer 2 of the model (batchflip).  take this input and drop it on the floor.  won't do anything in the backprop stage
 
 if opt.backend == 'cudnn' then
@@ -152,18 +152,12 @@ function train()
       local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
       model:backward(inputs, df_do)
 
-print("outputs size")
-print(outputs:size())
-print("targets size")
-print(targets:size())
       confusion:batchAdd(outputs, targets)
 
       return f,gradParameters
     end
 
-    print("running sgd...")
     optim.sgd(feval, parameters, optimState)
-    print("finished sgd")
   end
 
   confusion:updateValids()
@@ -185,7 +179,7 @@ function val()
   for i=1,provider.valData.data:size(1),bs do
     local outputs = model:forward(provider.valData.data:narrow(1,i,bs))
 --print(outputs)
-print(torch.max(outputs,2))
+--print(torch.max(outputs,2))
     confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
   end
 
