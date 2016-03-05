@@ -1,7 +1,7 @@
 require 'xlua'
 require 'optim'
 require 'cunn'
-require 'image'
+dofile './provider.lua'
 local c = require 'trepl.colorize' --prints in color!
 
 opt = lapp[[
@@ -12,58 +12,50 @@ opt = lapp[[
    --weightDecay              (default 0.0005)      weightDecay
    -m,--momentum              (default 0.9)         momentum
    --epoch_step               (default 25)          epoch step
-   --model                    (default surrogate_classifier)     model name
+   --model                    (default sample)     model name
    --max_epoch                (default 300)           maximum number of iterations
    --backend                  (default nn)            backend
-   --imageDir                 (default '../dat/augmented_extra')  directory of augmented image data
-   --val_pct                  (default 0.1)           fraction of data to devote to validation
-   --num_targets	      (default 4000)	     number of surrogate classes
+   --num_targets              (default 10)       number of surrogate classes
+   --patch_size               (default 32)        size of patch to take from image
+   --surrogate_path           (default ../dat/log_surrogate/surrogate_model.net)  path to surrogate classifier
 ]]
 
 print(opt)
 
-do -- data augmentation module -- local block of variables that will get killed
-  local BatchFlip,parent = torch.class('nn.BatchFlip', 'nn.Module') -- extends nn.Module class, makes it usable as a layer in the nn.Sequential call
-
-  function BatchFlip:__init() -- modify this to add rotation and translation to flip
-    parent.__init(self)
-    self.train = true --set train to true.  Only flip training data.
-  end
-
-  function BatchFlip:updateOutput(input)
-    if self.train then -- is true upon init
-      local bs = input:size(1) -- list of images (1st dimension is image id's)
-      local flip_mask = torch.randperm(bs):le(bs/2) -- random list of 1s and 0s, so randomly flips some images.  different for each epoch
-      for i=1,input:size(1) do
-        if flip_mask[i] == 1 then image.hflip(input[i], input[i]) end --performs a horizontal flip.  could add in vertical flip
-      end
-    end
-    self.output:set(input)
-    return self.output
-  end
-end
-
+--load model
 print(c.blue '==>' ..' configuring model')
-
---get model from external file
-dofile('models/'..opt.model..'.lua')
-vgg = build_surrogate_classifier(opt.num_targets)
-
 local model = nn.Sequential()
-model:add(nn.BatchFlip():float()) -- call batch flip.  can add another rotation layer or translation if you like
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
-model:add(vgg:cuda()) --load model from external file
-model:get(2).updateGradInput = function(input) return end -- get layer 2 of the model (batchflip).  take this input and drop it on the floor.  won't do anything in the backprop stage
+model:add(nn.Linear(256, opt.num_targets):cuda()) --TODO: make this a variable or extract from surrogate_model
+
+-- check that we can propagate forward without errors
+-- should get 16x10 tensor
+--print(#vgg:cuda():forward(torch.CudaTensor(16,3,32,32)))
+print("Testing tensor")
+print(#linearSVM:forward(torch.Tensor(16,3,32,32)))
+
 
 if opt.backend == 'cudnn' then
    require 'cudnn'
    cudnn.convert(model:get(3), cudnn)
 end
 
+--load surrogate classifier
+print(c.blue '==>' ..' loading classifier')
+local surrogate_net = torch.load(opt.surrogate_path)
+
 print(model)
 
+--load data
+print(c.blue '==>' ..' loading data')
+provider = torch.load '../dat/provider.t7' --load provider data
+provider.trainData.data = provider.trainData.data:float() --convert to float
+provider.valData.data = provider.valData.data:float()
+
+--initialize confusion matrix
 confusion = optim.ConfusionMatrix(opt.num_targets)
 
+--set up logging
 print('Will save at '..opt.save)
 paths.mkdir(opt.save)
 valLogger = optim.Logger(paths.concat(opt.save, 'val.log'))
@@ -72,8 +64,44 @@ valLogger.showPlot = false
 
 parameters,gradParameters = model:getParameters()
 
+-- Convolve function, for applying 32x32 pretraining model all over 96x96 image
+function convolve(im_batch, net, kW, dW)
+    --[[ Apply network convolutionally and get output from desired layer
+    args:
+        im_batch: batch of images to run through net
+        net: network to run through
+        kW: size of input to net
+        dW: stride; how much to move window each iteration.
+        
+    --]]
+    local LAST_ID = 2 --replace with index of last hidden layer from model
+    local output_size = 512
+    local dW = dW or 1
+    local n_steps = torch.floor((im_batch:size()[3]-kW)/dW+1)
+    local batch_size = im_batch:size()[1]
+
+    local output = torch.Tensor(batch_size,output_size,n_steps,n_steps)
+    for i=1,n_steps,dW do
+        for j=1,n_steps,dW do
+            local patch = im_batch[{{},{},{1,kW},{1,kW}}]:contiguous()
+            net:forward(patch)
+            last = net:get(LAST_ID)
+            output[{{},{},i,j}] = last.output --will result in batch_size x output_size vector at each window
+        end
+    end
+    
+    local pool_width = torch.floor(n_steps/2)
+    pooling = nn.SpatialMaxPooling(pool_width,pool_width)
+    
+    pooled_output = pooling:forward(output)
+    print("output size")
+    print(pooled_output:size())
+    return pooled_output
+end
+
+-- set criterion to SVM criterion
 print(c.blue'==>' ..' setting criterion')
-criterion = nn.CrossEntropyCriterion():cuda() --loss function
+criterion = nn.MarginCriterion():cuda() --loss function
 
 
 print(c.blue'==>' ..' configuring optimizer')
@@ -83,49 +111,6 @@ optimState = {
   momentum = opt.momentum,
   learningRateDecay = opt.learningRateDecay,
 }
-
-function train_val_split(data,val_pct)
-    --[[
-    Split data into test and training sets, according to validation percent
-    
-    returns:
-        both: table containing trainData and valData
-    ]]
-  local size = data.labels:size()[1]
-  local shuffle = torch.randperm(size):long()
-  local val_samples = torch.round(val_pct*size)
-  local train_samples = size - val_samples
-  local train_idx = shuffle[{{1,train_samples}}]
-  local val_idx = shuffle[{{train_samples+1,size}}]
-      
-  local trainData = {}
-  trainData['data']=data.features:index(1,train_idx)
-  trainData['labels']=data.labels:index(1,train_idx)
-
-  local valData = {}
-  valData['data']=data.features:index(1,val_idx)
-  valData['labels']=data.labels:index(1,val_idx)
-    
-  both = {trainData=trainData,valData=valData}
-  trainData = nil
-  valData = nil
-  collectgarbage()
-  return both
-end
-
-function load_data(fname)
-  --load batch
-  print(c.blue '==>' ..' loading '..fname..'...')
-  local data = torch.load(opt.imageDir..'/'..fname)
-  data.features = data.features:float()
-  data.labels = data.labels:float()
-
-  -- train val split
-  batch = train_val_split(data,opt.val_pct)
-  batch.trainData.data = batch.trainData.data:float() --convert to float
-  batch.valData.data = batch.valData.data:float()
-  data = nil
-end
 
 
 function train()
@@ -138,31 +123,32 @@ function train()
   print(c.blue '==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
   local targets = torch.CudaTensor(opt.batchSize)
-  local indices = torch.randperm(batch.trainData.data:size(1)):long():split(opt.batchSize) --get indices to split data into minibatches
-  -- remove last element so that all the minibatches have equal size.  This removes the "remainder" when you divide the data by batch size
+  local indices = torch.randperm(provider.trainData.data:size(1)):long():split(opt.batchSize)
+  -- remove last element so that all the batches have equal size.  This removes the "remainder" when you divide the data by batch size
   indices[#indices] = nil
 
   local tic = torch.tic() --start timer
-  for t,v in ipairs(indices) do -- iterate through mini-batches
+  for t,v in ipairs(indices) do
     xlua.progress(t, #indices) -- progress bar is cool
-    
-    local inputs = batch.trainData.data:index(1,v)
-    targets:copy(batch.trainData.labels:index(1,v))
+
+    local inputs = provider.trainData.data:index(1,v)
+    targets:copy(provider.trainData.labels:index(1,v))
+
+    inputs = convolve(inputs,net,opt.patch_size) -- transform using pretrained model
 
     local feval = function(x) --this is pretty much always the same for all torch programs
       if x ~= parameters then parameters:copy(x) end
       gradParameters:zero()
-
+      
       local outputs = model:forward(inputs)
       local f = criterion:forward(outputs, targets) --how well did you do
       local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
       model:backward(inputs, df_do)
-
+      
       confusion:batchAdd(outputs, targets)
 
       return f,gradParameters
     end
-
     optim.sgd(feval, parameters, optimState)
   end
 
@@ -180,13 +166,13 @@ end
 function val()
   -- disable flips, dropouts and batch normalization -- what is batch normalization?
   model:evaluate()
-  print(c.blue '==>'.." valing")
+  print(c.blue '==>'.." validating")
   local bs = 25
-  for i=1,batch.valData.data:size(1),bs do
-    local outputs = model:forward(batch.valData.data:narrow(1,i,bs))
---print(outputs)
---print(torch.max(outputs,2))
-    confusion:batchAdd(outputs, batch.valData.labels:narrow(1,i,bs))
+  for i=1,provider.valData.data:size(1),bs do
+    local inputs = provider.valData.data:narrow(1,i,bs)
+    inputs = convolve(inputs,net,opt.patch_size)
+    local outputs = model:forward()
+    confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
   end
 
   confusion:updateValids()
@@ -239,28 +225,9 @@ function val()
 end
 
 
-function scandir(directory)
-    local i, t, popen = 0, {}, io.popen
-    local pfile = popen('ls "'..directory..'"')
-    for filename in pfile:lines() do
-        i = i + 1
-        t[i] = filename
-    end
-    pfile:close()
-    return t
-end
-
-file_list = scandir(opt.imageDir)
-
---TEMP
-load_data('batch_1.t7')
 for i=1,opt.max_epoch do
-  --TEMP for k,file in pairs(file_list) do 
-    --load_data(file)
-    train()
-    val()
-    -- TEMP batch = nil
-    collectgarbage()
-  --TEMP end
+  train()
+  val()
 end
+
 

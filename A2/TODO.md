@@ -4,8 +4,11 @@
 1. how do I connect surrogate classifier to final classifier?  I think just import the model and hit model:forward(inputs); but then how do I get out the last hidden layer?
 
 ##Surrogate Classes
-1. train surrogate classifier on unlabeled data
-1. run labeled data through surrogate classifier, then feed last hidden layer through simple classifier
+1. bring script from Convolve.ipynb to run labeled data through surrogate classifier to output feature vector
+1. build svm classifier.  Torch should have a simple svm criterion:
+	* linearSVM = nn.Sequential()
+	* linearSVM:add(nn.Linear(ninputs, 1))
+	* criterion = nn.MarginCriterion()
 1. validate, test, tweak models
 
 

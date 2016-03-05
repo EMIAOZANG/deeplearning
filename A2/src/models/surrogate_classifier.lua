@@ -33,10 +33,10 @@ function build_surrogate_classifier(num_targets)
   classifier = nn.Sequential()
   classifier:add(nn.Dropout(0.5))
   classifier:add(nn.Linear(256*2*2,256))
-  classifier:add(nn.BatchNormalization(256))
+  classifier:add(nn.BatchNormalization(256)) --consider changing to 512
   classifier:add(nn.ReLU(true))
   classifier:add(nn.Dropout(0.5))
-  classifier:add(nn.Linear(256,num_targets))
+  classifier:add(nn.Linear(256,num_targets)) --consider changing to 512
   vgg:add(classifier)
 
   -- initialization from MSR
