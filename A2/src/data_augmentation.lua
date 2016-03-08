@@ -15,11 +15,11 @@ require 'optim'
 local c = require 'trepl.colorize' --prints in color!
 
 
-dofile('provider.lua')
+dofile('../src/provider.lua')
 print '==> processing options'
 
 opt = lapp[[
-   -d,--data                     (default "train")      data to augment
+   -d,--data                     (default none)      data to augment
    -s,--save                  (default "../dat/augmented_images")      subdirectory to save logs
    -b,--batchSize             (default 1000)          batch size
    --num_transformations      (default 100)         number of trasnformations/augmentations per image
@@ -115,6 +115,8 @@ function shift_hsl(im)
     --shift hue
     im[1]:add(hue_shift) 
     
+    --[[ Kill all of the saturation/lightness adjustments.
+    They don't work after normalization
     --shift saturation
     --im[2]:pow(s_shift[1]) --TEMP: killing this - doesn't work with normalization
     im[2]:mul(s_shift[2])
@@ -124,6 +126,8 @@ function shift_hsl(im)
     --im[3]:pow(l_shift[1]) -- TEMP: killing this - doesn't work with normalization
     im[3]:mul(l_shift[2])
     im[3]:add(l_shift[3])
+    --]]
+
     im = image.hsl2rgb(im)
     return im
 end
