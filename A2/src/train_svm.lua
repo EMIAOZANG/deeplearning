@@ -5,7 +5,7 @@ dofile './provider.lua'
 local c = require 'trepl.colorize' --prints in color!
 
 opt = lapp[[
-   -s,--save                  (default "logs")      subdirectory to save logs
+   -s,--save                  (default "logs/svm")      subdirectory to save logs
    -b,--batchSize             (default 64)          batch size
    -r,--learningRate          (default 1)        learning rate
    --learningRateDecay        (default 1e-7)      learning rate decay
@@ -17,34 +17,36 @@ opt = lapp[[
    --backend                  (default nn)            backend
    --num_targets              (default 10)       number of surrogate classes
    --patch_size               (default 32)        size of patch to take from image
-   --surrogate_path           (default ../dat/log_surrogate/surrogate_model.net)  path to surrogate classifier
+   --surrogate_path           (default ./logs/surrogate2/model.net)  path to surrogate classifier
 ]]
 
 print(opt)
 
---load model
+--build svm model
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
-model:add(nn.Linear(256, opt.num_targets):cuda()) --TODO: make this a variable or extract from surrogate_model
+model:add(nn.View(256*2*2)) --TODO: make this a variable
+model:add(nn.Linear(256*2*2, opt.num_targets):cuda()) --TODO: make this a variable or extract from surrogate_model
 
 -- check that we can propagate forward without errors
 -- should get 16x10 tensor
 --print(#vgg:cuda():forward(torch.CudaTensor(16,3,32,32)))
+print(model)
 print("Testing tensor")
-print(#linearSVM:forward(torch.Tensor(16,3,32,32)))
+print(model:forward(torch.rand(256*2*2)))
 
 
 if opt.backend == 'cudnn' then
    require 'cudnn'
-   cudnn.convert(model:get(3), cudnn)
+   cudnn.convert(model:get(2), cudnn)
 end
 
 --load surrogate classifier
 print(c.blue '==>' ..' loading classifier')
 local surrogate_net = torch.load(opt.surrogate_path)
 
-print(model)
+print(surrogate_net:get(14):get(2))
 
 --load data
 print(c.blue '==>' ..' loading data')
@@ -74,28 +76,25 @@ function convolve(im_batch, net, kW, dW)
         dW: stride; how much to move window each iteration.
         
     --]]
-    local LAST_ID = 2 --replace with index of last hidden layer from model
-    local output_size = 512
+    local output_size = 256 --TODO: replace with variable input
     local dW = dW or 1
     local n_steps = torch.floor((im_batch:size()[3]-kW)/dW+1)
     local batch_size = im_batch:size()[1]
 
-    local output = torch.Tensor(batch_size,output_size,n_steps,n_steps)
+    local output = torch.CudaTensor(batch_size,output_size,n_steps,n_steps)
     for i=1,n_steps,dW do
         for j=1,n_steps,dW do
-            local patch = im_batch[{{},{},{1,kW},{1,kW}}]:contiguous()
+            local patch = im_batch[{{},{},{1,kW},{1,kW}}]:contiguous():cuda()
             net:forward(patch)
-            last = net:get(LAST_ID)
-            output[{{},{},i,j}] = last.output --will result in batch_size x output_size vector at each window
+            local last = net:get(14):get(2) --TODO: replace with variable input
+            output[{{},{},i,j}] = last.output:cuda() --will result in batch_size x output_size vector at each window
         end
     end
     
     local pool_width = torch.floor(n_steps/2)
-    pooling = nn.SpatialMaxPooling(pool_width,pool_width)
-    
-    pooled_output = pooling:forward(output)
-    print("output size")
-    print(pooled_output:size())
+    local pooling = nn.SpatialMaxPooling(pool_width,pool_width):cuda()
+    local pooled_output = pooling:forward(output)
+    collectgarbage()
     return pooled_output
 end
 
@@ -134,7 +133,7 @@ function train()
     local inputs = provider.trainData.data:index(1,v)
     targets:copy(provider.trainData.labels:index(1,v))
 
-    inputs = convolve(inputs,net,opt.patch_size) -- transform using pretrained model
+    inputs = convolve(inputs,surrogate_net,opt.patch_size) -- transform using pretrained model
 
     local feval = function(x) --this is pretty much always the same for all torch programs
       if x ~= parameters then parameters:copy(x) end
@@ -170,8 +169,8 @@ function val()
   local bs = 25
   for i=1,provider.valData.data:size(1),bs do
     local inputs = provider.valData.data:narrow(1,i,bs)
-    inputs = convolve(inputs,net,opt.patch_size)
-    local outputs = model:forward()
+    inputs = convolve(inputs,surrogate_net,opt.patch_size)
+    local outputs = model:forward(inputs)
     confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
   end
 
