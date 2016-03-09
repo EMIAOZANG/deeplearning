@@ -252,15 +252,13 @@ end
 
 file_list = scandir(opt.imageDir)
 
---TEMP
-load_data('batch_1.t7')
 for i=1,opt.max_epoch do
-  --TEMP for k,file in pairs(file_list) do 
-    --load_data(file)
+  for k,file in pairs(file_list) do 
+    load_data(file)
     train()
     val()
-    -- TEMP batch = nil
+    batch = nil
     collectgarbage()
-  --TEMP end
+  end
 end
 

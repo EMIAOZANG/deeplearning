@@ -26,15 +26,15 @@ print(opt)
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
-model:add(nn.View(256*2*2)) --TODO: make this a variable
-model:add(nn.Linear(256*2*2, opt.num_targets):cuda()) --TODO: make this a variable or extract from surrogate_model
+model:add(nn.View(512*2*2)) --TODO: make this a variable
+model:add(nn.Linear(512*2*2, opt.num_targets):cuda()) --TODO: make this a variable or extract from surrogate_model
 
 -- check that we can propagate forward without errors
 -- should get 16x10 tensor
 --print(#vgg:cuda():forward(torch.CudaTensor(16,3,32,32)))
 print(model)
 print("Testing tensor")
-print(model:forward(torch.rand(256*2*2)))
+print(model:forward(torch.rand(512*2*2)))
 
 
 if opt.backend == 'cudnn' then
@@ -76,7 +76,7 @@ function convolve(im_batch, net, kW, dW)
         dW: stride; how much to move window each iteration.
         
     --]]
-    local output_size = 256 --TODO: replace with variable input
+    local output_size = 512 --TODO: replace with variable input
     local dW = dW or 1
     local n_steps = torch.floor((im_batch:size()[3]-kW)/dW+1)
     local batch_size = im_batch:size()[1]
