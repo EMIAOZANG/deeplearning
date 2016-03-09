@@ -26,7 +26,7 @@ print(opt)
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda()) -- model shift to 'cuda' mode
-model:add(nn.Linear(256, opt.num_targets):cuda()) --TODO: make this a variable or extract from surrogate_model
+model:add(nn.Linear(512, opt.num_targets):cuda()) --TODO: make this a variable or extract from surrogate_model
 
 -- check that we can propagate forward without errors
 -- should get 16x10 tensor
