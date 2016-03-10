@@ -10,6 +10,7 @@ opt = lapp[[
    -o, --outputFile (default "../dat/predictions.csv")
    -p, --pseudoLabelMode (default false)
    -m, --modelPath (default "logs/sample/model.net")
+   -t, --tsne (default false)
 ]]
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -181,6 +182,9 @@ function save_as_pseudo_label_file(fname, preds, imgData)
    torch.save(fname, plabelData)
 end
 
+
+--main entrance 
+
 mPath = opt.modelPath 
 tPath = opt.inputFile
 pdPath = "../dat/parsed_extra.t7b"
@@ -190,4 +194,5 @@ if opt.pseudoLabelMode == true then
    save_as_pseudo_label_file("../dat/stl-10/pseudolabels.t7b", predictions, rawImg)
 else
    save_pred_file("predictions.csv", predictions)
+   end
 end
