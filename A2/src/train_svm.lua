@@ -46,7 +46,7 @@ end
 print(c.blue '==>' ..' loading classifier')
 local surrogate_net = torch.load(opt.surrogate_path)
 
-print(surrogate_net:get(14):get(2))
+print(surrogate_net:get(14):get(6))
 
 --load data
 print(c.blue '==>' ..' loading data')
