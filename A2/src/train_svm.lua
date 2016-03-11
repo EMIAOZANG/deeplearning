@@ -17,7 +17,7 @@ opt = lapp[[
    --backend                  (default nn)            backend
    --num_targets              (default 10)       number of surrogate classes
    --patch_size               (default 32)        size of patch to take from image
-   --surrogate_path           (default ./logs/surrogate2/model.net)  path to surrogate classifier
+   --surrogate_path           (default ./logs/surrogate_20160309/model.net)  path to surrogate classifier
 ]]
 
 print(opt)
