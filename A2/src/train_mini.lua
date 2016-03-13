@@ -12,7 +12,7 @@ opt = lapp[[
    --weightDecay              (default 0.0005)      weightDecay
    -m,--momentum              (default 0.9)         momentum
    --epoch_step               (default 25)          epoch step
-   --model                    (default vgg_bn_drop)     model name
+   --model                    (default sample)     model name
    --max_epoch                (default 100)           maximum number of iterations
    --backend                  (default nn)            backend
    -p, --pseudoLabelMode      (default False)      pseudolabel mode switch
