@@ -16,6 +16,7 @@ opt = lapp[[
    --max_epoch                (default 100)           maximum number of iterations
    --backend                  (default nn)            backend
    -p, --pseudoLabelMode      (default False)      pseudolabel mode switch
+   -i, --imageFile            (default ../dat/augmented_mini_10.t7)  augmented image file
 ]]
 
 print(opt)
@@ -63,9 +64,53 @@ end
 print(model)
 
 print(c.blue '==>' ..' loading data')
-provider = torch.load '../dat/provider.t7' --load provider data
-provider.trainData.data = provider.trainData.data:float() --convert to float
-provider.valData.data = provider.valData.data:float()
+function train_val_split(data,val_pct)
+    --[[
+    Split data into test and training sets, according to validation percent
+    
+    returns:
+        both: table containing trainData and valData
+    ]]
+  local size = data.labels:size()[1]
+  local shuffle = torch.randperm(size):long()
+  local val_samples = torch.round(val_pct*size)
+  local train_samples = size - val_samples
+  local train_idx = shuffle[{{1,train_samples}}]
+  local val_idx = shuffle[{{train_samples+1,size}}]
+      
+  local trainData = {}
+  trainData['data']=data.features:index(1,train_idx)
+  trainData['labels']=data.labels:index(1,train_idx)
+
+  local valData = {}
+  valData['data']=data.features:index(1,val_idx)
+  valData['labels']=data.labels:index(1,val_idx)
+    
+  both = {trainData=trainData,valData=valData}
+  --trainData = nil
+  --valData = nil
+  collectgarbage()
+  return both
+end
+
+function load_data(fname)
+  --load batch file from disk
+  print(c.blue '==>' ..' loading '..fname..'...')
+  local data = torch.load(opt.imageDir..'/'..fname)
+  data.features = data.features:float()
+  data.labels = data.labels:float()
+
+  -- train val split
+  local batch = train_val_split(data,opt.val_pct)
+  batch.trainData.data = batch.trainData.data:float() --convert to float
+  batch.valData.data = batch.valData.data:float()
+  --data = nil
+  return batch
+end
+
+provider = load_data(opt.imageFile)
+collectgarbage()
+collectgarbage()
 
 confusion = optim.ConfusionMatrix(10)
 
