@@ -11,6 +11,7 @@ opt = lapp[[
    -m, --modelPath (default '../logs_pseudolabel/model.net')
    -b, --batchSize (default 25)
    -l, --layer (default 1)
+   -p, --pca (default 80)
 ]]
 
 --main function
@@ -45,6 +46,6 @@ collectgarbage()
 
 --after prediction is completed, get the output of some layer of the model
 print(layerOuts:size())
-local tsneImage = tSNEVis(imgData, layerOuts, 4096, 80)
+local tsneImage = tSNEVis(imgData, layerOuts, 4096, opt.pca)
 image.save(opt.outputFile,tsneImage)
 collectgarbage()
