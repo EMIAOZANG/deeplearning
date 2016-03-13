@@ -107,14 +107,14 @@ function train_val_split(data,val_pct)
   valData['labels']=data.labels:index(1,val_idx)
     
   both = {trainData=trainData,valData=valData}
-  trainData = nil
-  valData = nil
-  collectgarbage()
   return both
+  --trainData = nil
+  --valData = nil
+  collectgarbage()
 end
 
 function load_data(fname)
-  --load batch
+  --load batch file from disk
   print(c.blue '==>' ..' loading '..fname..'...')
   local data = torch.load(opt.imageDir..'/'..fname)
   data.features = data.features:float()
@@ -124,7 +124,7 @@ function load_data(fname)
   batch = train_val_split(data,opt.val_pct)
   batch.trainData.data = batch.trainData.data:float() --convert to float
   batch.valData.data = batch.valData.data:float()
-  data = nil
+  --data = nil
 end
 
 
@@ -138,31 +138,33 @@ function train()
   print(c.blue '==>'.." online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
   local targets = torch.CudaTensor(opt.batchSize)
-  local indices = torch.randperm(batch.trainData.data:size(1)):long():split(opt.batchSize) --get indices to split data into minibatches
-  -- remove last element so that all the minibatches have equal size.  This removes the "remainder" when you divide the data by batch size
-  indices[#indices] = nil
+  --local indices = torch.randperm(batch.trainData.data:size(1)):long():split(opt.batchSize) --get indices to split data into minibatches
+  --indices[#indices] = nil -- remove last element so that all the minibatches have equal size.  This removes the "remainder" when you divide the data by batch size
 
   local tic = torch.tic() --start timer
-  for t,v in ipairs(indices) do -- iterate through mini-batches
-    xlua.progress(t, #indices) -- progress bar is cool
+  for t = 1,batch.trainData:size()[1],opt.batchSize do -- iterate through mini-batches
+    xlua.progress(t, #indices) -- progress bar
     
-    local inputs = batch.trainData.data:index(1,v)
-    targets:copy(batch.trainData.labels:index(1,v))
+    local i0 = t
+    local i1 = t + opt.batchSize - 1
+    if i1<=batch.trainData:size()[1] then 
+      local inputs = batch.trainData.data[{{i0,i1}}]
+      targets:copy(batch.trainData.labels[{{i0,i1}}]
 
-    local feval = function(x) --this is pretty much always the same for all torch programs
-      if x ~= parameters then parameters:copy(x) end
-      gradParameters:zero()
+      local feval = function(x) --this is pretty much always the same for all torch programs
+        if x ~= parameters then parameters:copy(x) end
+        gradParameters:zero()
 
-      local outputs = model:forward(inputs)
-      local f = criterion:forward(outputs, targets) --how well did you do
-      local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
-      model:backward(inputs, df_do)
+        local outputs = model:forward(inputs)
+        local f = criterion:forward(outputs, targets) --how well did you do
+        local df_do = criterion:backward(outputs, targets) --get derivatives for every parameter
+        model:backward(inputs, df_do)
 
-      confusion:batchAdd(outputs, targets)
+        confusion:batchAdd(outputs, targets)
 
-      return f,gradParameters
+        return f,gradParameters
+      end
     end
-
     optim.sgd(feval, parameters, optimState)
   end
 
@@ -180,7 +182,7 @@ end
 function val()
   -- disable flips, dropouts and batch normalization -- what is batch normalization?
   model:evaluate()
-  print(c.blue '==>'.." valing")
+  print(c.blue '==>'.." validating")
   local bs = 25
   for i=1,batch.valData.data:size(1),bs do
     local outputs = model:forward(batch.valData.data:narrow(1,i,bs))
@@ -255,6 +257,8 @@ file_list = scandir(opt.imageDir)
 for i=1,opt.max_epoch do
   for k,file in pairs(file_list) do 
     load_data(file)
+    print("Train size")
+    print(batch.trainData:size())
     train()
     val()
     batch = nil
