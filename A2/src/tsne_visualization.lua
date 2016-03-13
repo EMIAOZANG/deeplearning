@@ -14,7 +14,7 @@ function tSNEVis(imgs, layerOutput, imSize, pcaDim)
       return:
          the tSNE image, torch.DoubleTensor(3,imSize,imSize)
    ]]
-   local lout = torch.FloatTensor(layerOutput:size()):copy(layerOutput:float())
+   local lout = torch.DoubleTensor(layerOutput:size()):copy(layerOutput:double())
    --print('Layer output shape: '..(lout:size()))
    lout:resize(lout:size(1),lout:size(2)*lout:size(3)*lout:size(4))
    --print('Flattened layer output shapei: '..lout:size())
@@ -27,7 +27,7 @@ function tSNEVis(imgs, layerOutput, imSize, pcaDim)
    
    
    --save a float copy of img data
-   local x = torch.FloatTensor(imgs:size()):copy(imgs:float())
+   local x = torch.DoubleTensor(imgs:size()):copy(imgs:double())
    --print('Image Data Size:'..x:size())
    
    map_im = mm.draw_image_map(mapped_lout, x, imSize, 0, true)
