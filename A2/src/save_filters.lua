@@ -10,7 +10,7 @@ local c = require 'trepl.colorize' --prints in color!
 model_path = "logs_pseudolabel/model.net"
 batch_size = 10
 layer_num = 1
-out_path = "../dat/output.t7"
+out_path = "../dat/output_pl.t7"
 
 dofile('../src/provider.lua')
 provider = torch.load('../dat/provider.t7') --load provider data

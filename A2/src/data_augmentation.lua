@@ -179,6 +179,10 @@ if opt.data=="train" then
     provider = torch.load '../dat/provider.t7' --load provider data
     provider.trainData.data = provider.trainData.data:float() --convert to float
     augment_all_data(provider.trainData.data)
+elseif opt.data=="mini" then
+    provider = torch.load '../dat/provider.t7' --load provider data
+    provider.trainData.data = provider.trainData.data[{{1,5}}]:float() --convert to float
+    augment_all_data(provider.trainData.data[{{1,5}}])
 elseif opt.data=="val" then
     provider = torch.load '../dat/provider.t7' --load provider data
     provider.valData.data = provider.valData.data:float()
@@ -186,5 +190,8 @@ elseif opt.data=="val" then
 elseif opt.data=="extra" then
     extra = torch.load '../dat/parsed_extra.t7b'
     augment_all_data(extra:float())
+elseif opt.data=="mini_extra" then
+    extra = torch.load '../dat/parsed_extra.t7b'
+    augment_all_data(extra[{{1,10}}]:float())
 else print("Ineligible dataset")
 end
