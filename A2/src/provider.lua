@@ -32,7 +32,7 @@ function Provider:__init(full)
   local height = 96
   local width = 96
 
-  local datadir = '../dat/stl-10'
+  local datadir = 'stl-10'
 
   -- download dataset
   if not paths.dirp(datadir) then

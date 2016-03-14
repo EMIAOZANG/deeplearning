@@ -16,7 +16,9 @@ opt = lapp[[
    --max_epoch                (default 100)           maximum number of iterations
    --backend                  (default nn)            backend
    -p, --pseudoLabelMode      (default False)      pseudolabel mode switch
-   -i, --imageFile            (default ../dat/augmented_mini_10.t7)  augmented image file
+   -i, --imageFile            (default ../dat/augmented_mini_extra/batch_1.t7)  augmented image file
+   -v, --val_pct	      (default 0.1)   validation pct
+   --num_targets              (default 10)         number of surrogate classes
 ]]
 
 print(opt)
@@ -96,7 +98,7 @@ end
 function load_data(fname)
   --load batch file from disk
   print(c.blue '==>' ..' loading '..fname..'...')
-  local data = torch.load(opt.imageDir..'/'..fname)
+  local data = torch.load(fname)
   data.features = data.features:float()
   data.labels = data.labels:float()
 
@@ -157,6 +159,10 @@ function train()
     local inputs = provider.trainData.data:index(1,v)
     targets:copy(provider.trainData.labels:index(1,v))
 
+    local rec = {inputs=inputs,targets=targets:float()}
+    local tfname = "../dat/temp/rec_"..t..".t7"
+    torch.save(tfname,rec)
+
     local feval = function(x) --this is pretty much always the same for all torch programs
       if x ~= parameters then parameters:copy(x) end
       gradParameters:zero()
@@ -191,8 +197,8 @@ function val()
   local bs = 25
   for i=1,provider.valData.data:size(1),bs do
     local outputs = model:forward(provider.valData.data:narrow(1,i,bs))
-print(outputs)
-print(torch.max(outputs,2))
+--print(outputs)
+--print(torch.max(outputs,2))
     confusion:batchAdd(outputs, provider.valData.labels:narrow(1,i,bs))
   end
 
