@@ -1,5 +1,5 @@
 --[[
-data_augmentation.lua
+super_augmentation.lua
 
 given a tensor of images, augment each image several times.
 returns a set of batches, where each batch is a table containing features and labels
