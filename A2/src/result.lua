@@ -20,6 +20,10 @@ if not paths.dirp(datadir) then
   os.execute('wget ' .. test .. '; '.. 'mv test.t7b '..datadir..'/test.t7b')
 end
 
+if not paths.filep('model.net') then
+  os.execute('wget http://www.cs.nyu.edu/~cdg356/model.net.2 -P .')
+  os.execute('mv model.net.2 model.net')
+end
 
 --class definition for DataParser
 do

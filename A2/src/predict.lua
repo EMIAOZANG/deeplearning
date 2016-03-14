@@ -9,7 +9,7 @@ opt = lapp[[
    -i, --inputFile (default "stl-10/test.t7b")
    -o, --outputFile (default "../dat/predictions.csv")
    -p, --pseudoLabelMode (default false)
-   -m, --modelPath (default "logs/sample/model.net")
+   -m, --modelPath (default "logs_pseudolabel/model.net")
    -t, --tsne (default false)
 ]]
 torch.setdefaulttensortype('torch.FloatTensor')
