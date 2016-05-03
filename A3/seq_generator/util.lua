@@ -36,6 +36,7 @@ local function fill_batch(idx, batch_size)
          idx: word index
          batch_size: batch length used during training phase
    ]]
+   --print(torch.Tensor(batch_size):fill(idx))
    return torch.Tensor(batch_size):fill(idx)
 end
 
@@ -52,13 +53,27 @@ local function reset_state(model)
    end
 end
 
-local function inverse_mapping()
+local function inverse_mapping(v_map)
    --[[
       create a inverse indexing for vocab_map
+      args:
+         v_map : word -> index mapping
+      returns:
+         index -> word mapping in a table
    ]]
-    for w, i in pairs(vocab_map) do
-       inv_vocab_map[i] = w
-    end
+   local inv_map = {}
+   for w, i in pairs(v_map) do
+      inv_map[i] = w
+   end
+   return inv_map
+end
+
+local function top_sample(p)
+   error({code="NotImplemented"})
+end
+
+local function multinomial_sample(p)
+   return torch.multinomial(p, 1)[1] -- params: ({p_1, .., p_n}, n_samples; returns tensor of (n_samples,)
 end
 
 -- encapsulate member functions in a Table to avoid global namespace pollution
@@ -67,5 +82,6 @@ return {
    idx2word = idx2word,
    fill_batch = fill_batch,
    reset_state = reset_state,
-   inverse_mapping = inverse_mapping
+   inverse_mapping = inverse_mapping,
+   multinomial_sample = multinomial_sample
 }
