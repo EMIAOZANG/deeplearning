@@ -3,22 +3,23 @@
 ----  All rights reserved.
 ----
 ----  This source code is licensed under the Apache 2 license found in the
-----  LICENSE file in the root directory of this source tree. 
+----  LICENSE file in the root directory of this source tree.
 ----
 
-local stringx = require('pl.stringx')
-local file = require('pl.file')
+local stringx = require('pl.stringx') -- PenLight Stringx lib
+local file = require('pl.file') -- PenLight file manipulation
 
 local ptb_path = "./data/"
 
-local trainfn = ptb_path .. "ptb.train.txt"
+local trainfn = ptb_path .. "ptb.train.txt" 
 local testfn  = ptb_path .. "ptb.test.txt"
 local validfn = ptb_path .. "ptb.valid.txt"
 
-local vocab_idx = 0
-local vocab_map = {}
+local vocab_idx = 0 -- vocabulary index
+local vocab_map = {} -- word: index mapping 
+local inv_vocab_map = {} -- index: word mapping
 
--- Stacks replicated, shifted versions of x_inp
+-- Stacks relicated, shifted versions of x_inp
 -- into a single matrix of size x_inp:size(1) x batch_size.
 local function replicate(x_inp, batch_size)
     local s = x_inp:size(1)
@@ -37,6 +38,7 @@ local function load_data(fname)
     data = stringx.split(data)
     --print(string.format("Loading %s, size of data = %d", fname, #data))
     local x = torch.zeros(#data)
+    -- build dictionary vocab_map
     for i = 1, #data do
         if vocab_map[data[i]] == nil then
             vocab_idx = vocab_idx + 1
@@ -69,7 +71,21 @@ local function validdataset(batch_size)
     return x
 end
 
+local function inverse_mapping()
+   --[[
+      create a inverse indexing for vocab_map
+   ]]
+    for w, i in pairs(vocab_map) do
+       inv_vocab_map[i] = w
+    end
+end
+
+
+-- members need to be returned in order to be called externally
 return {traindataset=traindataset,
         testdataset=testdataset,
         validdataset=validdataset,
-        vocab_map=vocab_map}
+        inverse_mapping=inverse_mapping,
+        vocab_map=vocab_map,
+        inv_vocab_map=inv_vocab_map
+     }

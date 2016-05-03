@@ -7,6 +7,9 @@
 --
 
 function g_disable_dropout(node)
+   --[[
+      recursively detect and disfunction all Dropout layers
+   ]]
     if type(node) == "table" and node.__typename == nil then
         for i = 1, #node do
             node[i]:apply(g_disable_dropout)
@@ -68,6 +71,9 @@ function g_make_deterministic(seed)
 end
 
 function g_replace_table(to, from)
+   --[[
+      assert dimension match, then replace table items one by one
+   ]]
     assert(#to == #from)
     for i = 1, #to do
         to[i]:copy(from[i])

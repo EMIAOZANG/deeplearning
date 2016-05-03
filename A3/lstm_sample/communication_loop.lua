@@ -14,7 +14,7 @@ end
 
 while true do
   print("Query: len word1 word2 etc")
-  local ok, line = pcall(readline)
+  local ok, line = pcall(readline) -- call function in protected mode, returns the (exit_state_flag, line_content)
   if not ok then
     if line.code == "EOF" then
       break -- end loop

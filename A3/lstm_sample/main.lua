@@ -18,7 +18,7 @@ end
 
 require('nngraph')
 require('base')
-ptb = require('data')
+ptb = require('data') --import user lib data.lua
 
 -- Trains 1 epoch and gives validation set ~182 perplexity (CPU).
 local params = {
@@ -37,6 +37,9 @@ local params = {
                }
 
 function transfer_data(x)
+   --[[
+      transfers the data to appropriate type (cuda or normal)
+   ]]
     if gpu then
         return x:cuda()
     else
@@ -44,9 +47,29 @@ function transfer_data(x)
     end
 end
 
+--[[
+   model is a table that provides abstraction of a RNN LSTM network
+   Members:
+   s : state, each state is a table, which carries all data in RNN blocks
+   ds : delta_s
+   start_s : starting state
+   rnns : a sequence of RNN blocks
+   err : errors, initalized as a 0 vector
+
+]]
 model = {}
 
 local function lstm(x, prev_c, prev_h)
+   --[[
+      creates LSTM cell module
+      args:
+         x : input
+         prev_c : C[t-1]
+         prev_h : h[t-1]
+      returns:
+         next_c : C[t]
+         next_h : h[t]
+   ]]
     -- Calculate all four gates in one go
     local i2h              = nn.Linear(params.rnn_size, 4*params.rnn_size)(x)
     local h2h              = nn.Linear(params.rnn_size, 4*params.rnn_size)(prev_h)
@@ -73,13 +96,13 @@ local function lstm(x, prev_c, prev_h)
 end
 
 function create_network()
-    local x                  = nn.Identity()()
-    local y                  = nn.Identity()()
+    local x                  = nn.Identity()() -- input batch
+    local y                  = nn.Identity()() -- output batch?
     local prev_s             = nn.Identity()()
     local i                  = {[0] = nn.LookupTable(params.vocab_size,
-                                                    params.rnn_size)(x)}
+                                                    params.rnn_size)(x)} -- i is a (batchs_size, 200) vector
     local next_s             = {}
-    local split              = {prev_s:split(2 * params.layers)}
+    local split              = {prev_s:split(2 * params.layers)} --splits s equally to two 2*layers table
     for layer_idx = 1, params.layers do
         local prev_c         = split[2 * layer_idx - 1]
         local prev_h         = split[2 * layer_idx]
@@ -91,16 +114,19 @@ function create_network()
     end
     local h2y                = nn.Linear(params.rnn_size, params.vocab_size)
     local dropped            = nn.Dropout(params.dropout)(i[params.layers])
-    local pred               = nn.LogSoftMax()(h2y(dropped))
-    local err                = nn.ClassNLLCriterion()({pred, y})
+    local pred               = nn.LogSoftMax()(h2y(dropped)) -- pred is a (vocab_size, ) log probability vector
+    local err                = nn.ClassNLLCriterion()({pred, y}) -- 1 scalar for each time step (RNN block)
     local module             = nn.gModule({x, y, prev_s},
                                       {err, nn.Identity()(next_s)})
     -- initialize weights
-    module:getParameters():uniform(-params.init_weight, params.init_weight)
+    module:getParameters():uniform(-params.init_weight, params.init_weight) -- initialize weight with a uniform distribution U[-init_weight, init_weight]
     return transfer_data(module)
 end
 
 function setup()
+   --[[
+   Create and initialize a RNN LSTM network
+   ]]
     print("Creating a RNN LSTM network.")
     local core_network = create_network()
     paramx, paramdx = core_network:getParameters()
@@ -215,7 +241,7 @@ end
 
 function run_test()
     reset_state(state_test)
-    g_disable_dropout(model.rnns)
+    g_disable_dropout(model.rnns) -- could probably disable output node as well?
     local perp = 0
     local len = state_test.data:size(1)
     
@@ -295,5 +321,7 @@ while epoch < params.max_max_epoch do
         end
     end
 end
+
+--run test
 run_test()
 print("Training is over.")
