@@ -36,7 +36,7 @@ local params = {
                 max_grad_norm=5, -- clip when gradients exceed this norm value
                 architecture = 'lstm',
                 model_dir = './models/',
-                result_path = './dat/exp_results.txt',
+                result_path = './dat/exp_results.txt'
                }
 
 function transfer_data(x)
@@ -256,12 +256,12 @@ function run_valid()
     if min_amortized_perp then
        if amortized_perp < min_amortized_perp then
          min_amortized_perp = min_amortized_perp -- update best result
-         torch.save((params.model_dir)..(params.mode)..'_best.net', model)  
+         torch.save((params.model_dir)..(params.architecture)..'_best.net', model)  
          print("Current best model saved to file")
       end
     else
        min_amortized_perp = amortized_perp
-       torch.save((params.model_dir)..(params.mode)..'_best.net', model)  
+       torch.save((params.model_dir)..(params.architecture)..'_best.net', model)  
        print("Current best model saved to file")
 
 

@@ -10,7 +10,7 @@ local function word2idx(word, v_map)
          v_map : word mapping dictionary 
    ]]
    local idx = v_map[word]
-   if idx == nil do
+   if idx == nil then
       idx = v_map[UNKNOWN_KEY_] -- if the word is not in the dictionary, treat it as unknown
    end
    return idx
@@ -48,7 +48,17 @@ local function reset_state(model)
    if model ~= nil and model.start_s ~= nil then 
       for d = 1, 2 * params.layers do
          model.start_s[d]:zero()
+      end
    end
+end
+
+local function inverse_mapping()
+   --[[
+      create a inverse indexing for vocab_map
+   ]]
+    for w, i in pairs(vocab_map) do
+       inv_vocab_map[i] = w
+    end
 end
 
 -- encapsulate member functions in a Table to avoid global namespace pollution
@@ -56,5 +66,6 @@ return {
    word2idx = word2idx,
    idx2word = idx2word,
    fill_batch = fill_batch,
-   reset_state = reset_state
+   reset_state = reset_state,
+   inverse_mapping = inverse_mapping
 }

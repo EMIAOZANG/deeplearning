@@ -2,11 +2,9 @@
 UNKNOWN_KEY_ = '<unk>'
 
 stringx = require('pl.stringx')
-ptb = require('data')
-require('util')
+util = require('util')
 require 'xlua'
 require 'io'
-require 'lapp'
 
 -- command line args
 params = lapp[[
@@ -32,13 +30,14 @@ function readline()
   if tonumber(line[1]) == nil then 
      error({code="init"})
   else
-     ext_length = table.remove(line, 1)
+     ext_length = tonumber(table.remove(line, 1))
   end
   for i = 1,#line do
     if line[i] == nil then error({code="vocab", word = line[i]}) end
     line[i] = line[i]:lower() -- convert to lower case
   end
-  return {tonumber(line[1]),line}
+  print(line)
+  return {ext_length, line}
 end
 
 function init_model(mfn)
@@ -73,7 +72,7 @@ function sequence_generation(input_seq, ext_len, gen_mode)
    -- convert input sequence of words to indices
    local iter_length = #input_seq + ext_len -- number of iterations
    for i = 1, #input_seq do
-      input_seq[i] = util.word2idx(input_seq[i]) -- convert word to index
+      input_seq[i] = util.word2idx(input_seq[i], vocab_map) -- convert word to index
    end
 
    -- load and initialize RNN model, only one cell is needed, we will train the same cell repeatedly
@@ -88,7 +87,7 @@ function sequence_generation(input_seq, ext_len, gen_mode)
       probs = torch.exp(log_preds:select(1,1)) -- log_preds are batch_size * output_width, therefore we need to select only the first row to make it (width,)
 
       -- generate predicted id 
-      local pred_id = ptb.inv_vocab_map[UNKNOWN_KEY_] -- generate <unk> if no method were specified
+      local pred_id = inv_vocab_map[UNKNOWN_KEY_] -- generate <unk> if no method were specified
       if gen_mode == 'top' then
          pred_id = util.top_sample(probs)
       elseif gen_mode == 'multinomial' then
@@ -96,7 +95,7 @@ function sequence_generation(input_seq, ext_len, gen_mode)
       end
 
       -- insert the predicted word back to the input sequence if i > #input_seq (initial)
-      if i > iter_length - ext_len do
+      if i > iter_length - ext_len then
          input_seq[i] = pred_id
       end
 
@@ -106,12 +105,17 @@ function sequence_generation(input_seq, ext_len, gen_mode)
    -- convert id to words and return the table
    local output = {}
    for i = 1, #input_seq do
-      output[i] = util.idx2word(input_seq[i])
+      output[i] = util.idx2word(input_seq[i], inv_vocab_map)
    end
    return output
 end
 
 -- main
+vocab_map = torch.load('./dat/v_map.t7b')
+print("Dictionary loaded")
+inv_vocab_map = util.inverse_mapping()
+torch.save('./dat/inv_map.t7b', inv_vocab_map)
+print("Inverse Mapping Created and Saved in ./dat")
 
 while true do
   print("Query: len word1 word2 etc")
@@ -135,7 +139,7 @@ while true do
 
     -- output to screen
     for i = 1, #new_sequence do
-       io.write(sequence[i]..' ') --use io.write to avoid linebreak
+       io.write(new_sequence[i]..' ') --use io.write to avoid linebreak
     end
     print('') 
   end

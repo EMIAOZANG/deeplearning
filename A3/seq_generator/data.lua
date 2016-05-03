@@ -5,11 +5,14 @@
 ----  This source code is licensed under the Apache 2 license found in the
 ----  LICENSE file in the root directory of this source tree.
 ----
+--
+
 
 local stringx = require('pl.stringx') -- PenLight Stringx lib
 local file = require('pl.file') -- PenLight file manipulation
 
 local ptb_path = "./data/"
+local dat_path = "./dat/"
 
 local trainfn = ptb_path .. "ptb.train.txt" 
 local testfn  = ptb_path .. "ptb.test.txt"
@@ -17,7 +20,6 @@ local validfn = ptb_path .. "ptb.valid.txt"
 
 local vocab_idx = 0 -- vocabulary index
 local vocab_map = {} -- word: index mapping 
-local inv_vocab_map = {} -- index: word mapping
 
 -- Stacks relicated, shifted versions of x_inp
 -- into a single matrix of size x_inp:size(1) x batch_size.
@@ -52,6 +54,8 @@ end
 local function traindataset(batch_size, char)
    local x = load_data(trainfn)
    x = replicate(x, batch_size)
+   -- save dictionary and inverse mapping only with train set
+   torch.save(dat_path..'v_map.t7b', vocab_map)
    return x
 end
 
@@ -71,21 +75,25 @@ local function validdataset(batch_size)
     return x
 end
 
-local function inverse_mapping()
-   --[[
-      create a inverse indexing for vocab_map
-   ]]
-    for w, i in pairs(vocab_map) do
-       inv_vocab_map[i] = w
-    end
+
+
+--load or build dictionary and inverse mapping
+--[[local map_size = 0
+for k, v in pairs(vocab_map) do
+   if map_size > 0 then 
+      break
+   end
+   map_size = map_size + 1
 end
 
+if map_size > 0 then
+   vocab_map = torch.load(dat_path..'v_map.t7b')
+   inv_vocab_map = torch.load(dat_path..'inv_map.t7b')
+end
+]]
 
 -- members need to be returned in order to be called externally
 return {traindataset=traindataset,
         testdataset=testdataset,
-        validdataset=validdataset,
-        inverse_mapping=inverse_mapping,
-        vocab_map=vocab_map,
-        inv_vocab_map=inv_vocab_map
+        validdataset=validdataset
      }
