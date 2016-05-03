@@ -36,7 +36,6 @@ local function fill_batch(idx, batch_size)
          idx: word index
          batch_size: batch length used during training phase
    ]]
-   --print(torch.Tensor(batch_size):fill(idx))
    return torch.Tensor(batch_size):fill(idx)
 end
 
@@ -69,7 +68,15 @@ local function inverse_mapping(v_map)
 end
 
 local function top_sample(p)
-   error({code="NotImplemented"})
+   --[[
+      return the maximum probability index[TEST PASSED]
+      args:
+         p : probability distribution
+      returns:
+         index of the maximum probability prediction
+   ]]
+   local y, i = torch.max(p, 1)
+   return i[1] -- assume that p is a 1-d tensor
 end
 
 local function multinomial_sample(p)
@@ -83,5 +90,6 @@ return {
    fill_batch = fill_batch,
    reset_state = reset_state,
    inverse_mapping = inverse_mapping,
-   multinomial_sample = multinomial_sample
+   multinomial_sample = multinomial_sample,
+   top_sample = top_sample
 }

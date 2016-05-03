@@ -107,7 +107,9 @@ function sequence_generation(input_seq, ext_len, gen_mode)
       if params.debug then print('pred_id: ', pred_id) end
 
       -- insert the predicted word back to the input sequence if i > #input_seq (initial)
-      input_seq[#input_seq + 1] = pred_id
+      if i >= iter_length - ext_len then
+         input_seq[#input_seq + 1] = pred_id
+      end
    end
    g_enable_dropout(m.rnns)
 

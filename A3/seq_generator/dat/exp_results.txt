@@ -1,0 +1,1 @@
+lstm:	validation	1	185.557lstm:	validation	2	147.293lstm:	validation	3	136.054lstm:	validation	4	129.118lstm:	validation	5	127.855lstm:	test	5	124.164

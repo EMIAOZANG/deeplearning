@@ -7,7 +7,7 @@ require 'xlua'
 
 -- params to loop through, you can add more to the table
 local loop_params = {
-   architecture = {"lstm", "gru"},
+   architecture = {"lstm"},
    dropout = {0, 0.2, 0.5},
    layers = {2, 4, 6}
 }
@@ -17,7 +17,7 @@ for key, value_table in pairs(loop_params) do
    -- Trains 1 epoch and gives validation set ~182 perplexity (CPU).
    print("Tuning params:\t"..key)
    for i = 1, #value_table do
-      local params = {
+      params = {
                 batch_size=20, -- minibatch
                 seq_length=20, -- unroll length
                 layers=2,
@@ -34,7 +34,7 @@ for key, value_table in pairs(loop_params) do
                 model_dir = './models/',
                 result_path = './dat/exp_results.txt'
       }
-      params.key = value_table[i]
-      dofile('main.lua')
+      params.key = value_table[i] -- set key
+      dofile('main_with_gru.lua')
    end
 end

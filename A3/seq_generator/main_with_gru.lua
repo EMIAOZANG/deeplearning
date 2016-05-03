@@ -46,6 +46,9 @@ if params == nil then -- find params in the outer loop first
                }
 end
 
+args_concat_string = 'params='..(params.architecture)..'_'..tostring(params.dropout)..'_'..tostring(params.layers)
+print(args_concat_string)
+-------------------------------------------------------
 function transfer_data(x)
    --[[
       transfers the data to appropriate type (cuda or normal)
@@ -240,7 +243,7 @@ end
 
 function write_result(run_data, epoch, metric)
    local fp = io.open(params.result_path, 'a+')
-   fp:write(tostring(params.architecture)..':\t'..run_data..'\t'..tostring(epoch)..'\t'..metric..'\n')
+   fp:write(args_concat_string..':\t'..run_data..'\t'..tostring(epoch)..'\t'..metric..'\n')
    fp:close()
 end
 
@@ -263,12 +266,12 @@ function run_valid()
     if min_amortized_perp then
        if amortized_perp < min_amortized_perp then
          min_amortized_perp = min_amortized_perp -- update best result
-         torch.save((params.model_dir)..(params.architecture)..'_'..tostring(params.dropout)..'_'..tostring(params.layers)..'_best.net', model)  
+         torch.save((params.model_dir)..args_concat_string..'_best.net', model)  
          print("Current best model saved to file")
       end
     else
        min_amortized_perp = amortized_perp
-       torch.save((params.model_dir)..(params.architecture)..'_'..tostring(params.dropout)..'_'..tostring(params.layers)..'_best.net', model)  
+       torch.save((params.model_dir)..args_concat_string..'_best.net', model)  
        print("Current best model saved to file")
 
 
@@ -372,7 +375,7 @@ while epoch < params.max_max_epoch do
 end
 
 -- save model to file
-model_path = './models/'..(params.architecture)..'_'..tostring(params.dropout)..'_'..tostring(params.layers)..'_final.net'
+model_path = './models/'..args_concat_string..'_final.net'
 torch.save(model_path, model)
 print("Model saved to ./models/")
 

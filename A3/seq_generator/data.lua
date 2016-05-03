@@ -77,21 +77,6 @@ end
 
 
 
---load or build dictionary and inverse mapping
---[[local map_size = 0
-for k, v in pairs(vocab_map) do
-   if map_size > 0 then 
-      break
-   end
-   map_size = map_size + 1
-end
-
-if map_size > 0 then
-   vocab_map = torch.load(dat_path..'v_map.t7b')
-   inv_vocab_map = torch.load(dat_path..'inv_map.t7b')
-end
-]]
-
 -- members need to be returned in order to be called externally
 return {traindataset=traindataset,
         testdataset=testdataset,
