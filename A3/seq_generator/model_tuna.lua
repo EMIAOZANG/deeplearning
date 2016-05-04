@@ -41,5 +41,6 @@ for key, value_table in pairs(loop_params) do
       params[key] = value_table[i] -- set key
       dofile(opt.filename)
       min_amortized_perp = nil
+      args_concat_string = nil
    end
 end

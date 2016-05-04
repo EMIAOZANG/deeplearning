@@ -243,7 +243,7 @@ function bp(state)
 end
 
 function write_result(run_data, epoch, metric)
-   local fp = io.open(args_concat_string..params.result_path, 'a+')
+   local fp = io.open(params.result_path..args_concat_string..'.txt', 'a+')
    fp:write(args_concat_string..':\t'..run_data..'\t'..tostring(epoch)..'\t'..metric..'\n')
    fp:close()
 end
@@ -380,7 +380,6 @@ model_path = './models/'..args_concat_string..'_final.net'
 torch.save(model_path, model)
 print("Model saved to ./models/")
 
-min_amortized_perp = nil
 --run test
 
 run_test()
