@@ -108,6 +108,12 @@ local function lstm(x, prev_c, prev_h)
     return next_c, next_h
 end
 
+local function gru(x, prev_c, prev_h)
+   --[[
+      creates GRU cell module
+   ]]
+end
+
 function create_network()
     local x                  = nn.Identity()() -- input batch
     local y                  = nn.Identity()() -- output batch?
@@ -218,7 +224,7 @@ function bp(state)
         local s = model.s[i - 1]
         -- Why 1?
         local derr = transfer_data(torch.ones(1))
-        -- adding dpred so that pred could backprop as well
+        -- adding dpred so that pred could backprop as wellAnna Choromanska
         local dpred = transfer_data(torch.zeros(params.batch_size, params.vocab_size))
         -- tmp stores the ds
         local tmp = model.rnns[i]:backward({x, y, s},

@@ -5,12 +5,17 @@
 
 require 'xlua'
 
+opt = lapp[[
+   -f, --filename (default 'main.lua')
+]]
+
 -- params to loop through, you can add more to the table
 local loop_params = {
    architecture = {"lstm"},
    dropout = {0, 0.2, 0.5},
    layers = {2, 4, 6}
 }
+
 
 -- loop body, we loop each param only once to avoid too many runs
 for key, value_table in pairs(loop_params) do
@@ -28,13 +33,13 @@ for key, value_table in pairs(loop_params) do
                 lr=1, --learning rate
                 vocab_size=10000, -- limit on the vocabulary size
                 max_epoch=4,  -- when to start decaying learning rate
-                max_max_epoch=13, -- final epoch
+                max_max_epoch=15, -- final epoch
                 max_grad_norm=5, -- clip when gradients exceed this norm value
                 architecture = 'lstm',
                 model_dir = './models/',
                 result_path = './dat/exp_results.txt'
       }
       params.key = value_table[i] -- set key
-      dofile('main_with_gru.lua')
+      dofile(opt.filename)
    end
 end
