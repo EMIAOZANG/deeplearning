@@ -375,7 +375,7 @@ while epoch < params.max_max_epoch do
 end
 
 -- save model to file
-model_path = './models/'..(params.architecture)..'_'..tostring(params.dropout)..'_'..tostring(params.layers)..'_final.net'
+model_path = './models/'..args_concat_string..'_final.net'
 torch.save(model_path, model)
 print("Model saved to ./models/")
 
