@@ -25,6 +25,7 @@ require('nngraph')
 require('base')
 ptb = require('data') --import user lib data.lua
 
+print("current params:", params)
 -- Trains 1 epoch and gives validation set ~182 perplexity (CPU).
 if params == nil then -- find params in the outer loop first
    params = {
@@ -242,7 +243,7 @@ function bp(state)
 end
 
 function write_result(run_data, epoch, metric)
-   local fp = io.open(params.result_path, 'a+')
+   local fp = io.open(args_concat_string..params.result_path, 'a+')
    fp:write(args_concat_string..':\t'..run_data..'\t'..tostring(epoch)..'\t'..metric..'\n')
    fp:close()
 end
@@ -263,7 +264,7 @@ function run_valid()
 
     local amortized_perp = torch.exp(perp / len) -- calculate amortized perplexity of words
 
-    if min_amortized_perp then
+    if min_amortized_perp ~= nil then
        if amortized_perp < min_amortized_perp then
          min_amortized_perp = min_amortized_perp -- update best result
          torch.save((params.model_dir)..args_concat_string..'_best.net', model)  
@@ -379,6 +380,8 @@ model_path = './models/'..args_concat_string..'_final.net'
 torch.save(model_path, model)
 print("Model saved to ./models/")
 
+min_amortized_perp = nil
 --run test
+
 run_test()
 print("Training is over.")
