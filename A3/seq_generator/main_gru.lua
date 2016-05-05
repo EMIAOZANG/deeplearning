@@ -111,6 +111,10 @@ local function lstm(x, prev_c, prev_h)
     return next_c, next_h
 end
 
+local function gru(x, prev_c, prev_h)
+
+end
+
 function create_network()
     local x                  = nn.Identity()() -- input batch
     local y                  = nn.Identity()() -- output batch?
@@ -374,25 +378,21 @@ while epoch < params.max_max_epoch do
         if epoch > params.max_epoch then
             params.lr = params.lr / params.decay
         end
-
-        -- stop training when val perplexity remains above global min for a long time
-        if prev_min_amortized_perp ~= nil then
-            if min_amortized_perp > prev_min_amortized_perp then
-            params.patience = params.patience - 1
-        else
-            prev_min_amortized_perp = min_amortized_perp
-            params.patience = tmp_patience--reset patience factor if the model continues to improve
-        end
-        if params.patience <= 0 then
-        break
-        end
-   end
-
-
-        
     end
 
    -- stop training if perplexity does not improve any more: Optional
+   if prev_min_amortized_perp ~= nil then
+      if min_amortized_perp >= prev_min_amortized_perp then
+         params.patience = params.patience - 1
+      else
+         prev_min_amortized_perp = min_amortized_perp
+         params.patience = tmp_patience--reset patience factor if the model continues to improve
+      end
+   end
+
+   if params.patience <= 0 then
+      break
+   end
     
 end
 
