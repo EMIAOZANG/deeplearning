@@ -264,9 +264,10 @@ function run_valid()
 
     local amortized_perp = torch.exp(perp / len) -- calculate amortized perplexity of words
 
+    print('current epoch ppl: ', amortized_perp, ' min pppl: ', min_amortized_perp)
     if min_amortized_perp ~= nil then
        if amortized_perp < min_amortized_perp then
-         min_amortized_perp = min_amortized_perp -- update best result
+         min_amortized_perp = amortized_perp-- update best result
          torch.save((params.model_dir)..args_concat_string..'_best.net', model)  
          print("Current best model saved to file")
       end
