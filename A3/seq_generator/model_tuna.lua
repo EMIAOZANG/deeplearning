@@ -11,7 +11,7 @@ opt = lapp[[
 
 -- params to loop through, you can add more to the table
 local loop_params = {
-   dropout = {0, 0.2, 0.5},
+   dropout = {0.2, 0.5},
    layers = {2, 4, 6}
 }
 
@@ -36,7 +36,8 @@ for key, value_table in pairs(loop_params) do
                 max_grad_norm=5, -- clip when gradients exceed this norm value
                 architecture = 'lstm',
                 model_dir = './models/',
-                result_path = './dat/exp_results'
+                result_path = './dat/exp_results',
+                patience = 2,
       }
       params[key] = value_table[i] -- set key
       dofile(opt.filename)

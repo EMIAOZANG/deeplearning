@@ -337,6 +337,8 @@ epoch_size = torch.floor(state_train.data:size(1) / params.seq_length)
 
 while epoch < params.max_max_epoch do
 
+    local prev_min_amortized_perp = min_amortized_perp
+
     -- take one step forward
     perp = fp(state_train)
     if perps == nil then
@@ -373,6 +375,17 @@ while epoch < params.max_max_epoch do
     end
 
    -- stop training if perplexity does not improve any more: Optional
+   if prev_min_amortized_perp ~= nil then
+      if min_amortized_perp >= prev_min_amortized_perp then
+         params.patience = params.patience - 1
+      else
+         prev_min_amortized_perp = min_amortized_perp
+         params.patience = 2 --reset patience factor if the model continues to improve
+   end
+
+   if params.patience <= 0 then
+      break
+   end
     
 end
 
