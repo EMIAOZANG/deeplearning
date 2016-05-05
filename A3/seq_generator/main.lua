@@ -48,6 +48,8 @@ if params == nil then -- find params in the outer loop first
 end
 
 args_concat_string = 'params='..(params.architecture)..'_'..tostring(params.dropout)..'_'..tostring(params.layers)
+local tmp_patience = params.patience
+
 print(args_concat_string)
 
 function transfer_data(x)
@@ -380,7 +382,8 @@ while epoch < params.max_max_epoch do
          params.patience = params.patience - 1
       else
          prev_min_amortized_perp = min_amortized_perp
-         params.patience = 2 --reset patience factor if the model continues to improve
+         params.patience = tmp_patience--reset patience factor if the model continues to improve
+      end
    end
 
    if params.patience <= 0 then
