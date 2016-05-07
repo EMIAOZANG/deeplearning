@@ -34,15 +34,23 @@ function g_enable_dropout(node)
 end
 
 function g_cloneManyTimes(net, T)
+   --[[
+      takes a net object and copy with same parameters for T times
+      args:
+         net : nn.gModule() object
+         T : int
+      returns:
+         A table of identical net objects with size T
+   ]]
     local clones = {}
-    local params, gradParams = net:parameters()
+    local params, gradParams = net:parameters() -- returns [{weights}, {gradWeights}]
     local mem = torch.MemoryFile("w"):binary()
     mem:writeObject(net)
     for t = 1, T do
         -- We need to use a new reader for each clone.
         -- We don't want to use the pointers to already read objects.
         local reader = torch.MemoryFile(mem:storage(), "r"):binary()
-        local clone = reader:readObject()
+        local clone = reader:readObject() -- readObject returns the next serializable object saved with writeObject
         reader:close()
         local cloneParams, cloneGradParams = clone:parameters()
         for i = 1, #params do

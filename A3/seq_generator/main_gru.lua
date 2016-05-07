@@ -41,7 +41,7 @@ if params == nil then -- find params in the outer loop first
                 max_epoch=4,  -- when to start decaying learning rate
                 max_max_epoch=5, -- final epoch
                 max_grad_norm=5, -- clip when gradients exceed this norm value
-                architecture = 'lstm',
+                architecture = 'gru',
                 model_dir = './models/',
                 result_path = './dat/exp_results.txt'
                }
@@ -89,7 +89,7 @@ local function lstm(x, prev_c, prev_h)
     -- Calculate all four gates in one go
     local i2h              = nn.Linear(params.rnn_size, 4*params.rnn_size)(x)
     local h2h              = nn.Linear(params.rnn_size, 4*params.rnn_size)(prev_h)
-    local gates            = nn.CAddTable()({i2h, h2h})
+    local gates            = nn.CAddTable()({i2h, h2h}) -- why CAddTable() instead of ConcatTable here?
 
     -- Reshape to (batch_size, n_gates, hid_size)
     -- Then slize the n_gates dimension, i.e dimension 2
@@ -111,46 +111,84 @@ local function lstm(x, prev_c, prev_h)
     return next_c, next_h
 end
 
-local function gru(x, prev_c, prev_h)
+local function gru(x, prev_h)
+   --[[
+      creates GRU (Gated Recurrent Unit) module
+      args:
+         x : input
+         prev_h : previous hidden output
+      returns:
+         next_h : next hidden output
+   ]]
+   local i2h = nn.Linear(params.rnn_size, 3 * params.rnn_size)(x) -- batch_size * (3*rnn_size)
+   local h2h = nn.Linear(params.rnn_size, 3 * params.rnn_size)(prev_h) -- [ reset_gate | update_gate | x ]
 
+   local gates = nn.CAddTable()(
+   {nn.Narrow(2, 1, 2 * params.rnn_size)(i2h), nn.Narrow(2, 1, 2 * params.rnn_size)(h2h)}) -- narrow the 2rd dimension (width = 3 * rnn_size)
+
+   local reshaped_gates = nn.Reshape(2, params.rnn_size)(gates)
+   local sliced_gates = nn.SplitTable(2)(reshaped_gates)
+
+   -- Fetch reset gate and update gate
+   local reset_gate = nn.Sigmoid()(nn.SelectTable(1)(sliced_gates))
+   local update_gate = nn.Sigmoid()(nn.SelectTable(2)(sliced_gates))
+   local out_gate = nn.Tanh()(nn.CAddTable()({nn.CMulTable()({reset_gate, nn.Narrow(2, 2 * params.rnn_size + 1, params.rnn_size)(h2h)}), x})) -- compute \hat{h}, note that x is the 3rd segment in the concatenated data array
+   
+   -- compute next_h
+   local next_h = nn.CAddTable()({prev_h, nn.CMulTable()({update_gate, nn.CSubTable()({out_gate, prev_h})})}) -- h[t] = h[t-1] + z[t] * (out_gate - h[t-1])
+
+   return next_h -- return the output node of GRU
 end
 
 function create_network()
-    local x                  = nn.Identity()() -- input batch
-    local y                  = nn.Identity()() -- output batch?
-    local prev_s             = nn.Identity()()
-    local i                  = {[0] = nn.LookupTable(params.vocab_size,
-                                                    params.rnn_size)(x)} -- i is a (batchs_size, 200) vector
-    local next_s             = {}
-    local split              = {prev_s:split(2 * params.layers)} --splits s equally to two 2*layers table
-    for layer_idx = 1, params.layers do
-        local prev_c         = split[2 * layer_idx - 1]
-        local prev_h         = split[2 * layer_idx]
-        local dropped        = nn.Dropout(params.dropout)(i[layer_idx - 1])
-        local next_c, next_h = lstm(dropped, prev_c, prev_h)
-        table.insert(next_s, next_c)
-        table.insert(next_s, next_h)
-        i[layer_idx] = next_h
-    end
-    local h2y                = nn.Linear(params.rnn_size, params.vocab_size)
-    local dropped            = nn.Dropout(params.dropout)(i[params.layers])
-    local pred               = nn.LogSoftMax()(h2y(dropped)) -- pred is a (vocab_size, ) log probability vector
-    local err                = nn.ClassNLLCriterion()({pred, y}) -- 1 scalar for each time step (RNN block)
-    local module             = nn.gModule({x, y, prev_s},
-                                      {err, nn.Identity()(next_s), pred})
-    -- initialize weights
-    module:getParameters():uniform(-params.init_weight, params.init_weight) -- initialize weight with a uniform distribution U[-init_weight, init_weight]
-    return transfer_data(module)
+   -- nodes shared by lstm and gru
+	local x                  = nn.Identity()() -- input batch
+	local y                  = nn.Identity()() -- output batch?
+	local prev_s             = nn.Identity()()
+	local i                  = {[0] = nn.LookupTable(params.vocab_size,
+	params.rnn_size)(x)} -- i is a (batchs_size, 200) node table
+	local next_s             = {}
+	local split              = {prev_s:split(2 * params.layers)} --splits s equally to two 2*layers table
+
+   local next_c, next_h = nil
+	for layer_idx = 1, params.layers do
+	   local prev_c         = split[2 * layer_idx - 1]
+	   local prev_h         = split[2 * layer_idx]
+	   local dropped        = nn.Dropout(params.dropout)(i[layer_idx - 1])
+
+      -- architecture specific nodes
+      if params.architecture == 'gru' then
+         next_h = gru(dropped, prev_h)
+         next_c = nn.Identity()(prev_c) -- Will it work?
+      else
+	      local next_c, next_h = lstm(dropped, prev_c, prev_h)
+      end
+	   table.insert(next_s, next_c)
+	   table.insert(next_s, next_h)
+	   i[layer_idx] = next_h
+	end
+
+	local h2y                = nn.Linear(params.rnn_size, params.vocab_size)
+	local dropped            = nn.Dropout(params.dropout)(i[params.layers])
+	local pred               = nn.LogSoftMax()(h2y(dropped)) -- pred is a (vocab_size, ) log probability vector
+	local err                = nn.ClassNLLCriterion()({pred, y}) -- 1 scalar for each time step (RNN block)
+	local module             = nn.gModule({x, y, prev_s},
+	                                      {err, nn.Identity()(next_s), pred})
+	    -- initialize weights
+	module:getParameters():uniform(-params.init_weight, params.init_weight) -- initialize weight with a uniform distribution U[-init_weight, init_weight]
+	return transfer_data(module)
 end
 
-function setup(mode)
+function setup()
    --[[
    Create and initialize a RNN LSTM or GRU network
    ]]
-   if mode == 'GRU' then
-    print("Creating a RNN GRU network")
-   else
-    print("Creating a RNN LSTM network.")
+    if params.architecture == 'gru' then
+     print("Creating a RNN GRU network")
+    else
+     print("Creating a RNN LSTM network.")
+    end
+    
     local core_network = create_network()
     paramx, paramdx = core_network:getParameters()
     model.s = {}
@@ -170,7 +208,6 @@ function setup(mode)
     model.rnns = g_cloneManyTimes(core_network, params.seq_length)
     model.norm_dw = 0
     model.err = transfer_data(torch.zeros(params.seq_length))
-   end
 end
 
 function reset_state(state)
@@ -381,6 +418,7 @@ while epoch < params.max_max_epoch do
     end
 
    -- stop training if perplexity does not improve any more: Optional
+   --[[
    if prev_min_amortized_perp ~= nil then
       if min_amortized_perp >= prev_min_amortized_perp then
          params.patience = params.patience - 1
@@ -393,6 +431,7 @@ while epoch < params.max_max_epoch do
    if params.patience <= 0 then
       break
    end
+   ]]
     
 end
 

@@ -24,12 +24,15 @@ local vocab_map = {} -- word: index mapping
 -- Stacks relicated, shifted versions of x_inp
 -- into a single matrix of size x_inp:size(1) x batch_size.
 local function replicate(x_inp, batch_size)
+   --[[
+      
+   ]]
     local s = x_inp:size(1)
     local x = torch.zeros(torch.floor(s / batch_size), batch_size)
     for i = 1, batch_size do
         local start = torch.round((i - 1) * s / batch_size) + 1
         local finish = start + x:size(1) - 1
-        x:sub(1, x:size(1), i, i):copy(x_inp:sub(start, finish))
+        x:sub(1, x:size(1), i, i):copy(x_inp:sub(start, finish)) -- get a submatrix and copy values from x_inp, 1d->2d mapping 
     end
     return x
 end
