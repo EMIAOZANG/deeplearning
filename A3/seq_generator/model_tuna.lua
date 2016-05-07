@@ -6,6 +6,7 @@
 require 'xlua'
 
 opt = lapp[[
+   -a, --architecture (default 'lstm')
    -f, --filename (default 'main.lua')
 ]]
 
@@ -34,7 +35,7 @@ for key, value_table in pairs(loop_params) do
                 max_epoch=4,  -- when to start decaying learning rate
                 max_max_epoch=15, -- final epoch
                 max_grad_norm=5, -- clip when gradients exceed this norm value
-                architecture = 'lstm',
+                architecture = opt.architecture,
                 model_dir = './models/',
                 result_path = './dat/exp_results',
                 patience = 2,
