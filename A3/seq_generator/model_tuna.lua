@@ -6,14 +6,13 @@
 require 'xlua'
 
 opt = lapp[[
-   -a, --architecture (default 'lstm')
-   -f, --filename (default 'main.lua')
+   -a, --architecture (default 'gru')
+   -f, --filename (default 'main_gru.lua')
 ]]
 
 -- params to loop through, you can add more to the table
 local loop_params = {
-   dropout = {0.2, 0.5},
-   layers = {2, 4, 6}
+   rnn_size={400,600}
 }
 
 
@@ -28,7 +27,7 @@ for key, value_table in pairs(loop_params) do
                 layers=2,
                 decay=2,
                 rnn_size=200, -- hidden unit size
-                dropout=0, 
+                dropout=0.199, 
                 init_weight=0.1, -- random weight initialization limits
                 lr=1, --learning rate
                 vocab_size=10000, -- limit on the vocabulary size
@@ -40,6 +39,7 @@ for key, value_table in pairs(loop_params) do
                 result_path = './dat/exp_results',
                 patience = 2,
       }
+      args_concat_string = 'params='..key..'='..value_table[i]
       params[key] = value_table[i] -- set key
       dofile(opt.filename)
       min_amortized_perp = nil

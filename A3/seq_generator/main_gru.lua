@@ -47,7 +47,6 @@ if params == nil then -- find params in the outer loop first
                }
 end
 
-args_concat_string = 'params='..(params.architecture)..'_'..tostring(params.dropout)..'_'..tostring(params.layers)
 local tmp_patience = params.patience
 
 print(args_concat_string)
